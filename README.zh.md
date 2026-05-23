@@ -1,245 +1,59 @@
 # lark-channel-bridge-reclaude
 
-> **这是 [zarazhangrui/feishu-claude-code-bridge](https://github.com/zarazhangrui/feishu-claude-code-bridge) 的 fork**，为 [reclaude](https://reclaude.ai) 用户做了开箱即用适配。
->
-> 上游 PR: [#23](https://github.com/zarazhangrui/feishu-claude-code-bridge/pull/23)（合并后本 fork 归档）。
+飞书 ↔ 本地 Claude Code，走 [reclaude](https://reclaude.ai) 代理鉴权。
 
-把飞书 / Lark 消息和本地 Claude Code 打通的轻量 bot——**通过 reclaude 走代理鉴权**，省去 cc-connect / Claude-to-IM 类工具的 HTTPS_PROXY 死结与 CA 证书坑。一条命令起 daemon，扫码绑应用，开机自启常驻。
+## 要求
 
-[English README](./README.md) · [演示文档](https://larkcommunity.feishu.cn/docx/OaRIdFIRFoLM3xxTmKwcetHqn5e)
+- macOS（launchd）或 Linux（systemd）
+- Node.js ≥ 20
+- `reclaude` 装好且 `reclaude status` 显示 `daemon_running: true`
+- `claude` CLI 装好
 
-## 跟原版 fork 的差异
-
-| 改动 | 原版 | 本 fork |
-|---|---|---|
-| 默认 spawn 的 binary | 写死 `claude` | 可配 `preferences.agent.binary`（支持任何 wrapper） |
-| reclaude 自动检测 | ❌ | ✅ 扫码向导会 `which reclaude`，存在则自动预设 `agent.binary='reclaude'` |
-| 配置 merge | 扫码 wizard 覆盖整段 preferences | persistEncrypted 合并 existing.preferences，保留手改的字段 |
-
-## 能干什么（继承上游）
-
-- 在飞书（私聊直接发；群里 `@bot`）把消息转给本地的 `claude` CLI，Claude 在你指定的工作目录里工作
-- **流式卡片**：Claude 的文本和工具调用实时出现在同一张卡片上，不用傻等
-- **会话延续**：每个 chat 独立 session，对话能接着上次说
-- **抢占 + 批处理**：中途发新消息会打断旧任务；快速连发几条会合并成一次请求
-- **多工作空间**：`/ws` 切换不同项目，session 自己重置
-- **图片 / 文件**：直接发给 bot，Claude 会读本地下载的文件路径
-- **卡片按钮**：`/help` `/ws list` `/status` 返回交互卡片，点按钮直接操作
-
-## 前置条件
-
-- macOS（用 launchd 做 daemon）或 Linux（用 systemd）
-- Node.js **≥ 20**
-- **reclaude 已安装并登录**：https://reclaude.ai（验证：`reclaude status` 应显示 `daemon_running: true`）
-- 真 `claude` CLI 已装（reclaude 会自动 exec 它）：https://docs.anthropic.com/en/docs/claude-code/quickstart
-
-## 装上就用（4 步走）
+## 装
 
 ```bash
-# 1. clone
 git clone https://github.com/ohayoucch/feishu-claude-code-bridge-reclaude.git
 cd feishu-claude-code-bridge-reclaude
-
-# 2. install + build
 npm install
 npm run build
 
-# 3. 首次启动（前台 + 扫码 + 自动检测 reclaude）
+# 1. 前台跑 + 扫码绑定飞书应用（首次必须）
 node dist/cli.js run
-# 终端会渲染 QR → 用飞书 App 扫 → 选择/创建 PersonalAgent 应用 → 凭据写入 ~/.lark-channel/config.json
-# 扫码完检测到 reclaude 时会打印：「Wrapper: 检测到 reclaude，已预设 preferences.agent.binary」
-# 看到 "ws client ready" + bot 名字后 Ctrl+C 退出
+# 终端出 QR → 飞书 App 扫 → 选/建 PersonalAgent → 凭据落 ~/.lark-channel/config.json
+# 看到 "ws client ready" 和 bot 名字后 Ctrl+C 退出
 
-# 4. 安装为开机自启 daemon
+# 2. 装为 daemon（开机自启、崩溃自拉）
 node dist/cli.js start
-# 会装 launchd plist (~/Library/LaunchAgents/ai.lark-channel-bridge.bot.plist)
-# 此后开机自启、进程崩了自动重拉、关电脑/换终端都不掉
 ```
 
-后续日常操作 = 直接打开飞书私聊那个 bot 或拉它进群 `@`。
+装完直接打开飞书私聊那个 bot，或拉进群 `@` 它。
 
-## 不用 reclaude 也能跑？
-
-可以。**reclaude 是可选**：
-- 装了 reclaude → wizard 自动预设、bridge spawn 它
-- 没装 reclaude → wizard 跳过预设、bridge spawn 默认 `claude`
-- 装了但不想用 → 手动在 `~/.lark-channel/config.json` 里删 `preferences.agent.binary`
-
-bridge 不绑死任何 wrapper——`agent.binary` 也可以指任何 claude-compatible 的 wrapper（绝对路径或 PATH 上的名字）。
-
-## 命令速查
-
-### 宿主 CLI
-
-> 下面命令都以「从源码 build 后跑」`node dist/cli.js` 为准。如果你 `npm install -g .` 装到了全局，可以把每行的 `node dist/cli.js` 换成 `lark-channel-bridge-reclaude`。
-
-**进程层**（在你自己的 shell 里直接跑 bridge）:
-
-```
-node dist/cli.js run [-c <config>]     前台启动 bot
-node dist/cli.js ps                    列出本机所有正在跑的 bridge 进程
-node dist/cli.js kill <id|#>           kill 指定 bridge 进程（SIGTERM，2s 后 SIGKILL）
-node dist/cli.js --help                列所有命令
-```
-
-**服务层**（让 OS 在后台托管 bridge）:
-
-> ⚠️ daemon 的 launchd plist / systemd unit 会硬编码 bridge CLI 的路径。**用源码 build + `node dist/cli.js start` 路径就是仓库目录里的 dist/cli.js，仓库别乱搬**。如果你 `npm install -g .` 装到全局也可以，但卸载/重装全局包会让 daemon 失联。
-
-```
-node dist/cli.js start                 注册（如需）+ 启动后台 daemon
-node dist/cli.js stop                  停止 daemon 并关闭开机自启
-node dist/cli.js restart               重启 daemon
-node dist/cli.js status                查看 daemon 状态（pid、日志路径、上次退出码）
-node dist/cli.js unregister            撤销注册（停止 + 删除服务定义文件）
-```
-
-daemon 崩溃会被自动拉起，用户登录时也会自动启动。平台映射:
-- **macOS** → `launchd` 用户代理 `~/Library/LaunchAgents/ai.lark-channel-bridge.bot.plist`
-- **Linux** → `systemd` 用户单元 `~/.config/systemd/user/lark-channel-bridge.bot.service`。要让 daemon 在退出登录后还能跑，执行一次 `loginctl enable-linger $USER`。
-- **Windows** → Task Scheduler 任务 `LarkChannelBridge.Bot`，触发条件为 ONLOGON。启动脚本位于 `~/.lark-channel/daemon-launcher.cmd`。
-
-daemon 的 stdout / stderr 写到 `~/.lark-channel/logs/daemon-stdout.log` 和 `daemon-stderr.log`，跟 bridge 自己的每日结构化日志放在同一个目录。
-
-> 多开同一个 app 时，开放平台会把事件随机推到其中一个长连接。`run` 启动前会检测同 app 已有的进程，TTY 下提示 `[c]ontinue / [k]ill old / [a]bort` 三选；非 TTY 只 warn 并继续。
-
-### 在飞书里用的斜杠命令
-
-| 命令 | 作用 |
-|---|---|
-| `/new` `/reset` | 清空当前 chat 的会话 |
-| `/cd <path>` | 切换工作目录（会重置 session） |
-| `/ws list` | 列所有命名工作空间（卡片 + 按钮） |
-| `/ws save <name>` | 把当前 cwd 存为命名工作空间 |
-| `/ws use <name>` | 切换到命名工作空间 |
-| `/ws remove <name>` | 删除命名工作空间 |
-| `/status` | 当前 cwd / session / agent（卡片 + 按钮） |
-| `/config` | 调整偏好（消息回复方式、工具调用显示等） |
-| `/stop` | 终止当前正在跑的 run（也可点卡片底部 ⏹ 终止 按钮） |
-| `/timeout [N\|off\|default]` | 当前 session 的 idle 探活（分钟）；`/config` 改全局默认。详见下方"常见问题 — Claude 子进程假死" |
-| `/ps` | 列出本机所有 start 进程，标识当前回复的是哪个 |
-| `/exit <id\|#>` | 终止指定 start 进程（自己 = graceful 退出；他人 = SIGTERM） |
-| `/reconnect` | 强制重连 WebSocket（网络抖动后 bot 没反应时用） |
-| `/doctor [描述]` | 把最近运行日志和你的描述喂给 Claude，自助诊断卡住 / 异常的原因 |
-| `/help` | 帮助卡片 |
-| 其它 `/xxx` | 原样交给 Claude |
-
-**消息策略**：私聊 = 不需要 @，任何消息都回；**群（含话题群）= 默认要 @bot 才回**（0.1.22 起的新默认），不 @ 时 bot 完全沉默；@全员永远不响应；云文档评论必须 @bot。要恢复"群里也不强制 @"的老行为：`/config` → "群里需要 @ bot" → 选"否"。
-
-## 数据目录
-
-| 路径 | 内容 |
-|---|---|
-| `~/.lark-channel/config.json` | 应用凭据（App ID / Secret），权限 600 |
-| `~/.lark-channel/sessions.json` | 每个 chat / 话题 的 Claude session id + cwd（+ 可选的 `/timeout` 覆盖） |
-| `~/.lark-channel/workspaces.json` | 工作空间映射 |
-| `~/.lark-channel/processes.json` | 当前在跑的 start 进程注册中心（`ps`/`stop` 用），死进程会被自动清理 |
-| `~/.lark-channel/media/<chatId>/` | 下载的图片 / 文件，24h 自动清理 |
-| `~/.lark-channel/logs/YYYY-MM-DD.log` | 结构化运行日志（JSON line），按天滚动；启动时清理超过 7 天的老文件（`LARK_CHANNEL_LOG_DAYS` 环境变量可改）；`/doctor` 命令读它做诊断 |
-
-> 从原版 `lark-channel-bridge` 切到本 fork？数据目录 `~/.lark-channel/` 完全兼容，直接跑 `node dist/cli.js run` 即可——会沿用现有 config / sessions / workspaces。
-
-## 用 wrapper binary 跑 claude（如 reclaude）
-
-默认 spawn 的是 `claude`（从 PATH 解析）。如果你想跑一个 **claude-compatible 的 wrapper**——比如本地 MITM 鉴权代理 [reclaude](https://reclaude.ai)——可以在 `~/.lark-channel/config.json` 里加：
-
-```json
-{
-  "preferences": {
-    "agent": {
-      "binary": "reclaude"
-    }
-  }
-}
-```
-
-也支持绝对路径：`"binary": "/Users/me/.local/bin/reclaude"`。
-
-Bridge 只负责 spawn 这个 binary 并传 claude 的标准 flag（`-p`, `--output-format stream-json`, `--resume`, `--model`, `--permission-mode`, `--append-system-prompt`）。wrapper 自己负责在 exec 真 claude 之前注入它需要的 env（HTTPS_PROXY / NODE_EXTRA_CA_CERTS / ANTHROPIC_AUTH_TOKEN 等）——bridge 不碰这块。
-
-启动时 `agent.isAvailable()` 会跑 `<binary> --version`，wrapper 必须 exit 0 且接受 claude 的命令行参数。
-
-## 访问控制（可选）
-
-默认 bot 是"开放"的：任何能找到它的人都能私聊它，群里 @bot 就触发响应。**个人自己用 / 给朋友用，这就够了**——但如果想给团队用、或者怕在大群里被滥用，可以在飞书里发 `/config`，调下面三栏中的一栏或几栏。
-
-### 几种典型用法
-
-**只让我自己用**
-
-`/config` 表单里：
-- "用户白名单"：填你自己的 `open_id`
-- 其它两栏留空
-
-之后非你发的消息会被 bot 静默丢弃——bot 不会回"你没权限"之类的话，免得暴露它存在。
-
-**只让一小群同事用**
-
-- "用户白名单"：填同事们的 `open_id`，英文逗号分隔
-- 其它两栏留空
-
-**bot 只在指定工作群里干活**
-
-私聊不受影响；群里只有名单上的群才触发响应：
-- "群白名单"：填想让 bot 工作的群 `chat_id`，英文逗号分隔
-- 私聊**永远**不受此约束——意味着你随时能 DM bot 调配置
-
-**谁都能跟 bot 聊，但只有我能改设置**
-
-- "管理员"：填你自己的 `open_id`
-- 其它两栏留空
-
-下次别人发 `/account` `/config` `/exit` `/reconnect` `/doctor` `/cd` `/ws` 这些敏感命令，会收到 `❌ 此命令仅管理员可用`。普通对话（让 bot 帮忙做事）不受影响。
-
-**完全收紧**
-
-三栏全填。`/config` 表单会拦下常见误配——比如管理员名单里没把你自己加进去、群白名单里没包含当前会话，提交时会被拒绝并提示原因，不会让你不小心把自己锁在外面。
-
-### 怎么找 `open_id` 和 `chat_id`
-
-最快的办法：让目标用户给 bot 发一条任意消息（群的话就 @bot 一下），然后在终端：
+## 管 daemon
 
 ```bash
-grep '"event":"enter"' ~/.lark-channel/logs/$(date +%Y-%m-%d).log | tail -5
+node dist/cli.js status      # 看状态 + 日志路径
+node dist/cli.js restart     # 重启
+node dist/cli.js stop        # 停（保留 plist）
+node dist/cli.js unregister  # 彻底卸载
 ```
 
-每一行都带 `chatId`（= 群或私聊 ID）和 `senderId`（= 用户 `open_id`），照着复制就行。
+## 改设置
 
-也可以查飞书开放平台的"获取用户信息"API，但要先给你的应用加 `contact:user` scope，没必要为了几个 ID 折腾。
+`~/.lark-channel/config.json` 的 `preferences.agent.binary`：扫码时 wizard 自动检测到 reclaude 就预设为 `"reclaude"`；要换别的 wrapper 或换回 `"claude"` 直接改这里再 `restart`。
 
-### 几点提醒
+## 日志
 
-- 改完 `/config` **下一条消息**就生效，不用重启
-- 把任何一栏设成**空字符串** = 不限制（不是"一个都不允许"）
-- 想从某种受限状态回到"完全开放"，把对应栏目清空再提交即可
-- 私聊不受"群白名单"约束——这是设计上故意的：万一你不小心把所有群都锁死了，**回到 bot 的私聊里发 `/config` 就能解锁**
-
-### 高级：直接改配置文件
-
-不太想登飞书也可以，`/config` 表单背后写的是 `~/.lark-channel/config.json` 的 `preferences.access`：
-
-```json
-{
-  "preferences": {
-    "access": {
-      "allowedUsers": ["ou_xxxxxxxxxxxxx"],
-      "allowedChats": ["oc_xxxxxxxxxxxxx"],
-      "admins":       ["ou_xxxxxxxxxxxxx"]
-    }
-  }
-}
+```
+~/.lark-channel/logs/daemon-stdout.log
+~/.lark-channel/logs/daemon-stderr.log
+~/.lark-channel/logs/YYYY-MM-DD.log   # 结构化按天
 ```
 
-手改完之后**重启 bridge** 或者**找一个被允许的会话发 `/reconnect`** 让新配置生效。日常调整还是用 `/config` 表单更省事，直接改文件主要用在"部署脚本里预填"之类的场景。
+## 注意
 
-## 常见问题
+- **仓库目录别搬**：daemon plist 硬编码 `dist/cli.js` 绝对路径。要搬：`unregister` → 搬 → `start`。
+- **2026-06-15 起 `claude -p` 独立计费**：Pro $20 / Max5x $100 / Max20x $200 月度池，不滚存。
 
-**Claude 挂住不回复**：通常是 `claude` CLI 本身没登录，或者 session 指向了不存在的 cwd。发 `/status` 看当前状态；`/new` 重开会话往往就好。
+---
 
-**Claude 子进程假死（卡片停在最后一帧不动）**：从 0.1.20 起支持 idle 探活：claude 一段时间没输出就被 SIGTERM kill，卡片末尾会标 "⏱ N 分钟无响应，已自动终止"。默认关闭。开启方式：`/config` 设全局值（分钟），或 `/timeout 10` 只对当前 session 生效；`/timeout off` 关掉某个 session 的探活；`/timeout default` 清掉 session 覆盖回退到全局。
-
-**图片发过去 Claude 说看不到**：升级到最新版，0.1.0 之前的版本有文件名去重 bug。
-
-## 许可
-
-[MIT](./LICENSE)
+[English](./README.md) · Fork of [zarazhangrui/feishu-claude-code-bridge](https://github.com/zarazhangrui/feishu-claude-code-bridge)（上游 PR [#23](https://github.com/zarazhangrui/feishu-claude-code-bridge/pull/23) 合并后归档）· MIT
