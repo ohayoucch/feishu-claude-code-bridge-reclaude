@@ -1,10 +1,10 @@
 {
-  "name": "lark-channel-bridge",
-  "version": "0.1.32",
-  "description": "Bridge Feishu/Lark messenger with local CLI coding agents (Claude Code, ...)",
+  "name": "lark-channel-bridge-reclaude",
+  "version": "0.1.0",
+  "description": "Feishu/Lark bot that bridges to Claude Code via reclaude (handles HTTPS_PROXY / CA / auth automatically). Fork of zarazhangrui/feishu-claude-code-bridge with first-class reclaude wrapper support.",
   "type": "module",
   "bin": {
-    "lark-channel-bridge": "./bin/lark-channel-bridge.mjs"
+    "lark-channel-bridge-reclaude": "./bin/lark-channel-bridge.mjs"
   },
   "exports": {
     ".": {
@@ -24,7 +24,7 @@
     "build": "tsup",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "prepublishOnly": "pnpm typecheck && pnpm build"
+    "prepublishOnly": "npm run typecheck && npm run build"
   },
   "dependencies": {
     "@clack/prompts": "^1.4.0",
@@ -54,9 +54,20 @@
     "lark",
     "claude",
     "claude-code",
+    "reclaude",
+    "anthropic",
     "cli",
     "channel",
-    "bridge"
+    "bridge",
+    "bot"
   ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ohayoucch/feishu-claude-code-bridge-reclaude.git"
+  },
+  "homepage": "https://github.com/ohayoucch/feishu-claude-code-bridge-reclaude#readme",
+  "bugs": {
+    "url": "https://github.com/ohayoucch/feishu-claude-code-bridge-reclaude/issues"
+  },
   "license": "MIT"
 }

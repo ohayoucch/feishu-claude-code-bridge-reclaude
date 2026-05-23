@@ -1,12 +1,22 @@
-# lark-channel-bridge
+# lark-channel-bridge-reclaude
 
-A lightweight bot that bridges Feishu / Lark messenger with your local Claude Code CLI. Run one command, scan a QR code to bind a Lark app, and talk to Claude from chat — read screenshots, edit code, anything you'd do at the terminal.
+> **Fork of [zarazhangrui/feishu-claude-code-bridge](https://github.com/zarazhangrui/feishu-claude-code-bridge)** with out-of-the-box support for the [reclaude](https://reclaude.ai) Anthropic auth proxy.
+>
+> Upstream PR: [#23](https://github.com/zarazhangrui/feishu-claude-code-bridge/pull/23). This fork will be archived once that merges.
 
-[中文 README](./README.zh.md)
+A lightweight bot that bridges Feishu / Lark messenger with your local Claude Code — **routed through reclaude** so you skip the HTTPS_PROXY / CA-cert hell that breaks cc-connect / Claude-to-IM style tools. One command starts a daemon, scan a QR to bind a Lark app, runs at boot.
 
-关于能实现的效果，详情可以阅读[飞书文档](https://larkcommunity.feishu.cn/docx/OaRIdFIRFoLM3xxTmKwcetHqn5e)
+[中文 README](./README.zh.md) · [demo doc](https://larkcommunity.feishu.cn/docx/OaRIdFIRFoLM3xxTmKwcetHqn5e)
 
-## What it does
+## Diff vs upstream
+
+| Change | Upstream | This fork |
+|---|---|---|
+| Spawned binary | Hardcoded `claude` | `preferences.agent.binary` (any wrapper) |
+| reclaude detection | ❌ | ✅ Wizard runs `which reclaude`; presets `agent.binary='reclaude'` if found |
+| Config merge | Wizard wipes `preferences` | `persistEncrypted` deep-merges existing preferences, never clobbers hand-edited fields |
+
+## What it does (inherited from upstream)
 
 - Forwards Feishu / Lark messages (DM directly, or `@bot` in a group) to your local `claude` CLI, running in a working directory you control.
 - **Streaming card**: Claude's text and tool calls update on a single Lark card in real time — no waiting for the final reply.
@@ -18,54 +28,71 @@ A lightweight bot that bridges Feishu / Lark messenger with your local Claude Co
 
 ## Prerequisites
 
+- macOS (launchd for daemon) or Linux (systemd)
 - Node.js **>= 20**
-- `claude` CLI installed and logged in — see https://docs.anthropic.com/en/docs/claude-code/quickstart
-- A Lark / Feishu **PersonalAgent** app (the QR-code wizard on first launch can create one for you).
+- **reclaude installed and logged in** — see https://reclaude.ai (verify with `reclaude status` showing `daemon_running: true`)
+- The real `claude` CLI installed (reclaude execs it automatically) — see https://docs.anthropic.com/en/docs/claude-code/quickstart
 
-## Install
-
-```bash
-npm i -g lark-channel-bridge
-# or
-pnpm add -g lark-channel-bridge
-```
-
-## First run
+## Install & run (4 steps)
 
 ```bash
-lark-channel-bridge run
+# 1. clone
+git clone https://github.com/ohayoucch/feishu-claude-code-bridge-reclaude.git
+cd feishu-claude-code-bridge-reclaude
+
+# 2. install + build
+npm install
+npm run build
+
+# 3. first run (foreground + QR scan + auto-detect reclaude)
+node dist/cli.js run
+# Terminal renders a QR → scan it with the Feishu app → pick / create a PersonalAgent
+# → credentials land in ~/.lark-channel/config.json. If reclaude is on PATH you'll see:
+# "Wrapper: 检测到 reclaude，已预设 preferences.agent.binary"
+# Ctrl+C once you see "ws client ready" and the bot name.
+
+# 4. install as boot-time daemon
+node dist/cli.js start
+# Drops a launchd plist (~/Library/LaunchAgents/ai.lark-channel-bridge.bot.plist).
+# Auto-starts at login, restarts if it crashes, survives terminal close / reboot.
 ```
 
-The first run detects there's no app configured and **opens a QR-code wizard**:
+Daily use: just DM the bot in Feishu, or invite it to a group and `@`-mention it.
 
-1. A QR code renders in your terminal.
-2. Scan it with the Feishu / Lark app.
-3. Pick or create a PersonalAgent app.
-4. Credentials are written to `~/.lark-channel/config.json`.
+## Don't use reclaude?
+
+You can. **reclaude is optional**:
+- reclaude installed → wizard presets it, bridge spawns it
+- reclaude missing → wizard skips, bridge spawns plain `claude`
+- installed but don't want to use → delete `preferences.agent.binary` from `~/.lark-channel/config.json`
+
+Bridge isn't reclaude-specific — `agent.binary` accepts any claude-compatible wrapper (absolute path or PATH-resolvable name).
 
 ## Commands
 
 ### Host CLI
 
+> Commands below assume running from source with `node dist/cli.js`. If you `npm install -g .` it globally, replace `node dist/cli.js` with `lark-channel-bridge-reclaude` in every line.
+
 **Process-level** (run the bridge directly in your shell):
 
 ```
-lark-channel-bridge run [-c <config>]     Run the bot in the foreground
-lark-channel-bridge ps                    List all running bridge processes on this machine
-lark-channel-bridge kill <id|#>           Kill a bridge process (SIGTERM, SIGKILL after 2s)
-lark-channel-bridge --help                List all commands
+node dist/cli.js run [-c <config>]     Run the bot in the foreground
+node dist/cli.js ps                    List all running bridge processes on this machine
+node dist/cli.js kill <id|#>           Kill a bridge process (SIGTERM, SIGKILL after 2s)
+node dist/cli.js --help                List all commands
 ```
 
 **Service-level** (run the bridge as a background OS-managed daemon):
 
-> ⚠️ **Install globally before using service-level commands**. The daemon's launchd plist / systemd unit / Windows task hard-codes the path to the bridge CLI; if you invoke via `npx lark-channel-bridge start`, that path lives in npm's temp cache (`~/.npm/_npx/<hash>/...`) and will be garbage-collected — your daemon stops working as soon as the cache is cleaned. Use `npm install -g lark-channel-bridge` first, then run `lark-channel-bridge start`. `bridge run` is fine via npx (one-shot process).
+> ⚠️ The daemon's launchd plist / systemd unit hard-codes the path to `dist/cli.js`. Don't move the repo after running `start` — if you do, run `unregister` first, move, then `start` again to regenerate the plist.
 
 ```
-lark-channel-bridge start                 Install (if needed) and start the daemon
-lark-channel-bridge stop                  Stop the daemon and disable autostart
-lark-channel-bridge restart               Restart the daemon in place
-lark-channel-bridge status                Show daemon status (pid, log paths, last exit)
-lark-channel-bridge unregister            Remove the service definition and stop
+node dist/cli.js start                 Install (if needed) and start the daemon
+node dist/cli.js stop                  Stop the daemon and disable autostart
+node dist/cli.js restart               Restart the daemon in place
+node dist/cli.js status                Show daemon status (pid, log paths, last exit)
+node dist/cli.js unregister            Remove the service definition and stop
 ```
 
 The daemon auto-restarts on crash and on user login. Platform mapping:
@@ -111,7 +138,7 @@ Daemon logs go to `~/.lark-channel/logs/daemon-stdout.log` and `daemon-stderr.lo
 | `~/.lark-channel/media/<chatId>/` | Downloaded images / files, cleaned up after 24h |
 | `~/.lark-channel/logs/YYYY-MM-DD.log` | Structured run logs (JSONL), rotated daily; older than 7 days are pruned at startup (`LARK_CHANNEL_LOG_DAYS` env var overrides). `/doctor` reads these. |
 
-> Upgrading from before 0.1.11? Run `lark-channel-bridge migrate` once — it moves anything under `~/.config/lark-channel-bridge/` and `~/.cache/lark-channel-bridge/` to the new location and upgrades `config.json` to the new schema.
+> Migrating from upstream `lark-channel-bridge`? Data directory `~/.lark-channel/` is fully compatible — just run `node dist/cli.js run` and existing config / sessions / workspaces are picked up as-is.
 
 ## Running through a wrapper binary (e.g. reclaude)
 

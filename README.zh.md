@@ -1,12 +1,22 @@
-# lark-channel-bridge
+# lark-channel-bridge-reclaude
 
-把飞书 / Lark 消息和本地 Claude Code CLI 打通的轻量 bot，用一条命令起服务，扫码绑应用，在飞书里和 Claude 对话、让它读图 / 改代码。
+> **这是 [zarazhangrui/feishu-claude-code-bridge](https://github.com/zarazhangrui/feishu-claude-code-bridge) 的 fork**，为 [reclaude](https://reclaude.ai) 用户做了开箱即用适配。
+>
+> 上游 PR: [#23](https://github.com/zarazhangrui/feishu-claude-code-bridge/pull/23)（合并后本 fork 归档）。
 
-[English README](./README.md)
+把飞书 / Lark 消息和本地 Claude Code 打通的轻量 bot——**通过 reclaude 走代理鉴权**，省去 cc-connect / Claude-to-IM 类工具的 HTTPS_PROXY 死结与 CA 证书坑。一条命令起 daemon，扫码绑应用，开机自启常驻。
 
-关于能实现的效果，详情可以阅读[飞书文档](https://larkcommunity.feishu.cn/docx/OaRIdFIRFoLM3xxTmKwcetHqn5e)
+[English README](./README.md) · [演示文档](https://larkcommunity.feishu.cn/docx/OaRIdFIRFoLM3xxTmKwcetHqn5e)
 
-## 能干什么
+## 跟原版 fork 的差异
+
+| 改动 | 原版 | 本 fork |
+|---|---|---|
+| 默认 spawn 的 binary | 写死 `claude` | 可配 `preferences.agent.binary`（支持任何 wrapper） |
+| reclaude 自动检测 | ❌ | ✅ 扫码向导会 `which reclaude`，存在则自动预设 `agent.binary='reclaude'` |
+| 配置 merge | 扫码 wizard 覆盖整段 preferences | persistEncrypted 合并 existing.preferences，保留手改的字段 |
+
+## 能干什么（继承上游）
 
 - 在飞书（私聊直接发；群里 `@bot`）把消息转给本地的 `claude` CLI，Claude 在你指定的工作目录里工作
 - **流式卡片**：Claude 的文本和工具调用实时出现在同一张卡片上，不用傻等
@@ -18,54 +28,70 @@
 
 ## 前置条件
 
+- macOS（用 launchd 做 daemon）或 Linux（用 systemd）
 - Node.js **≥ 20**
-- `claude` CLI 已安装并登录：https://docs.anthropic.com/en/docs/claude-code/quickstart
-- 一个飞书 / Lark PersonalAgent 应用（首次启动的扫码向导能帮你创建）
+- **reclaude 已安装并登录**：https://reclaude.ai（验证：`reclaude status` 应显示 `daemon_running: true`）
+- 真 `claude` CLI 已装（reclaude 会自动 exec 它）：https://docs.anthropic.com/en/docs/claude-code/quickstart
 
-## 安装
-
-```bash
-npm i -g lark-channel-bridge
-# 或
-pnpm add -g lark-channel-bridge
-```
-
-## 首次启动
+## 装上就用（4 步走）
 
 ```bash
-lark-channel-bridge run
+# 1. clone
+git clone https://github.com/ohayoucch/feishu-claude-code-bridge-reclaude.git
+cd feishu-claude-code-bridge-reclaude
+
+# 2. install + build
+npm install
+npm run build
+
+# 3. 首次启动（前台 + 扫码 + 自动检测 reclaude）
+node dist/cli.js run
+# 终端会渲染 QR → 用飞书 App 扫 → 选择/创建 PersonalAgent 应用 → 凭据写入 ~/.lark-channel/config.json
+# 扫码完检测到 reclaude 时会打印：「Wrapper: 检测到 reclaude，已预设 preferences.agent.binary」
+# 看到 "ws client ready" + bot 名字后 Ctrl+C 退出
+
+# 4. 安装为开机自启 daemon
+node dist/cli.js start
+# 会装 launchd plist (~/Library/LaunchAgents/ai.lark-channel-bridge.bot.plist)
+# 此后开机自启、进程崩了自动重拉、关电脑/换终端都不掉
 ```
 
-第一次跑会检测到没配置应用，**自动进入扫码向导**：
+后续日常操作 = 直接打开飞书私聊那个 bot 或拉它进群 `@`。
 
-1. 终端渲染一个二维码
-2. 用飞书 App 扫码
-3. 选择 / 创建 PersonalAgent 应用
-4. 成功后凭据写入 `~/.lark-channel/config.json`
+## 不用 reclaude 也能跑？
+
+可以。**reclaude 是可选**：
+- 装了 reclaude → wizard 自动预设、bridge spawn 它
+- 没装 reclaude → wizard 跳过预设、bridge spawn 默认 `claude`
+- 装了但不想用 → 手动在 `~/.lark-channel/config.json` 里删 `preferences.agent.binary`
+
+bridge 不绑死任何 wrapper——`agent.binary` 也可以指任何 claude-compatible 的 wrapper（绝对路径或 PATH 上的名字）。
 
 ## 命令速查
 
 ### 宿主 CLI
 
+> 下面命令都以「从源码 build 后跑」`node dist/cli.js` 为准。如果你 `npm install -g .` 装到了全局，可以把每行的 `node dist/cli.js` 换成 `lark-channel-bridge-reclaude`。
+
 **进程层**（在你自己的 shell 里直接跑 bridge）:
 
 ```
-lark-channel-bridge run [-c <config>]     前台启动 bot
-lark-channel-bridge ps                    列出本机所有正在跑的 bridge 进程
-lark-channel-bridge kill <id|#>           kill 指定 bridge 进程（SIGTERM，2s 后 SIGKILL）
-lark-channel-bridge --help                列所有命令
+node dist/cli.js run [-c <config>]     前台启动 bot
+node dist/cli.js ps                    列出本机所有正在跑的 bridge 进程
+node dist/cli.js kill <id|#>           kill 指定 bridge 进程（SIGTERM，2s 后 SIGKILL）
+node dist/cli.js --help                列所有命令
 ```
 
 **服务层**（让 OS 在后台托管 bridge）:
 
-> ⚠️ **服务层命令必须先全局安装,不能直接用 npx**。daemon 的 launchd plist / systemd unit / Windows 任务里会**硬编码** bridge CLI 的路径;通过 `npx lark-channel-bridge start` 调用时,这条路径在 npm 的临时缓存里(`~/.npm/_npx/<hash>/...`),会被 GC 清掉 — 一旦缓存清理,daemon 就起不来了。请先 `npm install -g lark-channel-bridge`,再 `lark-channel-bridge start`。`bridge run` 用 npx 调用没问题(单次进程)。
+> ⚠️ daemon 的 launchd plist / systemd unit 会硬编码 bridge CLI 的路径。**用源码 build + `node dist/cli.js start` 路径就是仓库目录里的 dist/cli.js，仓库别乱搬**。如果你 `npm install -g .` 装到全局也可以，但卸载/重装全局包会让 daemon 失联。
 
 ```
-lark-channel-bridge start                 注册（如需）+ 启动后台 daemon
-lark-channel-bridge stop                  停止 daemon 并关闭开机自启
-lark-channel-bridge restart               重启 daemon
-lark-channel-bridge status                查看 daemon 状态（pid、日志路径、上次退出码）
-lark-channel-bridge unregister            撤销注册（停止 + 删除服务定义文件）
+node dist/cli.js start                 注册（如需）+ 启动后台 daemon
+node dist/cli.js stop                  停止 daemon 并关闭开机自启
+node dist/cli.js restart               重启 daemon
+node dist/cli.js status                查看 daemon 状态（pid、日志路径、上次退出码）
+node dist/cli.js unregister            撤销注册（停止 + 删除服务定义文件）
 ```
 
 daemon 崩溃会被自动拉起，用户登录时也会自动启动。平台映射:
@@ -111,7 +137,7 @@ daemon 的 stdout / stderr 写到 `~/.lark-channel/logs/daemon-stdout.log` 和 `
 | `~/.lark-channel/media/<chatId>/` | 下载的图片 / 文件，24h 自动清理 |
 | `~/.lark-channel/logs/YYYY-MM-DD.log` | 结构化运行日志（JSON line），按天滚动；启动时清理超过 7 天的老文件（`LARK_CHANNEL_LOG_DAYS` 环境变量可改）；`/doctor` 命令读它做诊断 |
 
-> 升级自 0.1.11 之前的版本？跑一次 `lark-channel-bridge migrate` —— 自动把 `~/.config/lark-channel-bridge/` 和 `~/.cache/lark-channel-bridge/` 下的内容搬到新位置，并把 `config.json` 升级到新结构。
+> 从原版 `lark-channel-bridge` 切到本 fork？数据目录 `~/.lark-channel/` 完全兼容，直接跑 `node dist/cli.js run` 即可——会沿用现有 config / sessions / workspaces。
 
 ## 用 wrapper binary 跑 claude（如 reclaude）
 
