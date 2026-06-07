@@ -25,6 +25,9 @@ export interface PlistInputs {
   profile: string;
   /** Root directory for config/profile state. */
   channelHome: string;
+  /** Optional claude-compatible wrapper binary (e.g. reclaude) pinned via
+   * LARK_CHANNEL_CLAUDE_BIN in the daemon env. */
+  claudeBin?: string;
 }
 
 export function buildPlist(inputs: PlistInputs): string {
@@ -34,6 +37,9 @@ export function buildPlist(inputs: PlistInputs): string {
       .replace(/</g, '&lt;')
       .replace(/>/g, '&gt;')
       .replace(/"/g, '&quot;');
+  const claudeBinEntry = inputs.claudeBin
+    ? `\n        <key>LARK_CHANNEL_CLAUDE_BIN</key>\n        <string>${escape(inputs.claudeBin)}</string>`
+    : '';
   return `<?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -61,7 +67,7 @@ export function buildPlist(inputs: PlistInputs): string {
         <key>PATH</key>
         <string>${escape(inputs.envPath)}</string>
         <key>LARK_CHANNEL_HOME</key>
-        <string>${escape(inputs.channelHome)}</string>
+        <string>${escape(inputs.channelHome)}</string>${claudeBinEntry}
     </dict>
 </dict>
 </plist>
@@ -79,6 +85,9 @@ export async function writePlist(profile: string): Promise<void> {
     envPath: process.env.PATH ?? '',
     profile,
     channelHome: paths.rootDir,
+    ...(process.env.LARK_CHANNEL_CLAUDE_BIN
+      ? { claudeBin: process.env.LARK_CHANNEL_CLAUDE_BIN }
+      : {}),
   });
   const plistPath = launchAgentPlistPath(profile);
   await mkdir(dirname(plistPath), { recursive: true });

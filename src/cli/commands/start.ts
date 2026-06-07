@@ -434,7 +434,12 @@ export function createRuntimeAgent(
       larkChannel,
     });
   }
-  return new ClaudeAdapter({ larkChannel });
+  return new ClaudeAdapter({
+    larkChannel,
+    ...(process.env.LARK_CHANNEL_CLAUDE_BIN
+      ? { binary: process.env.LARK_CHANNEL_CLAUDE_BIN }
+      : {}),
+  });
 }
 
 /**
