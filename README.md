@@ -1,6 +1,18 @@
-# lark-channel-bridge-reclaude
+<p align="center">
+  <img src="./assets/readme/hero.svg" width="100%" alt="lark-channel-bridge-reclaude — drive the Claude Code on your own machine from any Feishu chat. No public IP, no webhook; QR wizard, one WebSocket, reclaude auth.">
+</p>
 
-Feishu / Lark ↔ local Claude Code, routed through [reclaude](https://reclaude.ai).
+DM the bot — or `@` it in a group — and the message runs on the Claude Code installed on **your own machine**. The reply streams back into the chat as one live-updating interactive card.
+
+- **No public IP, no webhook.** The bridge dials *out* to Feishu over a single WebSocket long connection; a terminal QR wizard creates the bot and drops credentials into `~/.lark-channel/config.json`.
+- **Real sessions.** Each chat resumes its own Claude session; messages sent mid-run queue up and merge into the next turn — at most one run per chat.
+- **reclaude-first.** The wizard auto-detects `reclaude` on PATH and spawns Claude through it, so HTTPS proxy, CA certs and auth env come along for free. One config line falls back to plain `claude`.
+
+## How it works
+
+<p align="center">
+  <img src="./assets/readme/workflow.svg" width="100%" alt="Message flow: Feishu chat → Lark Open Platform WebSocket (outbound only) → local bridge daemon (launchd/systemd) → reclaude → claude -p with stream-json; events render back into one live interactive card, throttled ~400 ms.">
+</p>
 
 ## Requirements
 

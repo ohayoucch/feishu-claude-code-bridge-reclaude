@@ -1,0 +1,68 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="360" viewBox="0 0 1200 360" role="img" aria-labelledby="title desc">
+  <title id="title">How a message travels</title>
+  <desc id="desc">A Feishu message goes through the Lark Open Platform WebSocket to the local bridge daemon, which spawns claude through reclaude; stream-json events render back into one live interactive card.</desc>
+
+  <rect width="1200" height="360" rx="18" fill="#0A0D12"/>
+  <rect x="0.75" y="0.75" width="1198.5" height="358.5" rx="17.25" fill="none" stroke="#232B38" stroke-width="1.5"/>
+
+  <text x="48" y="46" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12" letter-spacing="2.5" fill="#7E8896">ONE MESSAGE, ROUND TRIP</text>
+
+  <g id="node-chat">
+    <rect x="48" y="70" width="252" height="150" rx="10" fill="#10151D" stroke="#232B38" stroke-width="1.5"/>
+    <circle cx="72" cy="97" r="4" fill="#3370FF"/>
+    <text x="84" y="102" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif" font-size="17" font-weight="600" fill="#E8EDF4">Feishu / Lark chat</text>
+    <text x="68" y="132" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12.5" fill="#7E8896">DM the bot, or</text>
+    <text x="68" y="152" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12.5" fill="#7E8896">@ it in a group</text>
+  </g>
+
+  <g id="node-platform">
+    <rect x="336" y="70" width="252" height="150" rx="10" fill="#10151D" stroke="#232B38" stroke-width="1.5"/>
+    <circle cx="360" cy="97" r="4" fill="#6C9AFF"/>
+    <text x="372" y="102" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif" font-size="17" font-weight="600" fill="#E8EDF4">Lark Open Platform</text>
+    <text x="356" y="132" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12.5" fill="#7E8896">WebSocket long connection</text>
+    <text x="356" y="152" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12.5" fill="#7E8896">outbound only &#8212;</text>
+    <text x="356" y="172" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12.5" fill="#7E8896">no public IP / webhook</text>
+  </g>
+
+  <g id="node-daemon">
+    <rect x="624" y="70" width="252" height="150" rx="10" fill="#10151D" stroke="#232B38" stroke-width="1.5"/>
+    <circle cx="648" cy="97" r="4" fill="#E8EDF4"/>
+    <text x="660" y="102" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif" font-size="17" font-weight="600" fill="#E8EDF4">bridge daemon</text>
+    <text x="644" y="132" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12.5" fill="#7E8896">launchd / systemd</text>
+    <text x="644" y="152" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12.5" fill="#7E8896">per-chat sessions</text>
+    <text x="644" y="172" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12.5" fill="#7E8896">queue while running</text>
+  </g>
+
+  <g id="node-machine">
+    <rect x="912" y="70" width="252" height="150" rx="10" fill="#10151D" stroke="#232B38" stroke-width="1.5"/>
+    <circle cx="936" cy="97" r="4" fill="#D97757"/>
+    <text x="948" y="102" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif" font-size="17" font-weight="600" fill="#E8EDF4">your machine</text>
+    <rect x="932" y="116" width="212" height="34" rx="8" fill="#141013" stroke="#D97757" stroke-width="1.2"/>
+    <text x="946" y="138" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12.5"><tspan fill="#E8967A">reclaude</tspan><tspan fill="#7E8896">  proxy&#183;CA&#183;auth</tspan></text>
+    <rect x="932" y="160" width="212" height="34" rx="8" fill="#0D1117" stroke="#232B38" stroke-width="1.2"/>
+    <text x="946" y="182" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12.5" fill="#C7D1DC">claude -p &#183; stream-json</text>
+  </g>
+
+  <g id="forward-path" stroke="#3370FF" stroke-width="1.5" fill="none">
+    <path d="M300 145 H336"/>
+    <path d="M312 139 L318 145 L312 151"/>
+    <path d="M322 139 L328 145 L322 151"/>
+    <path d="M588 145 H624"/>
+    <path d="M600 139 L606 145 L600 151"/>
+    <path d="M610 139 L616 145 L610 151"/>
+    <path d="M876 145 H912"/>
+    <path d="M888 139 L894 145 L888 151"/>
+    <path d="M898 139 L904 145 L898 151"/>
+  </g>
+
+  <g id="return-path" fill="none">
+    <path d="M1038 220 V260 H174 V228" stroke="#D97757" stroke-width="1.5" stroke-dasharray="6 5"/>
+    <path d="M168 234 L174 226 L180 234" stroke="#D97757" stroke-width="1.5"/>
+    <path d="M436 254 L430 260 L436 266" stroke="#D97757" stroke-width="1.5"/>
+    <path d="M646 254 L640 260 L646 266" stroke="#D97757" stroke-width="1.5"/>
+    <path d="M856 254 L850 260 L856 266" stroke="#D97757" stroke-width="1.5"/>
+  </g>
+
+  <text x="600" y="298" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13" fill="#E8967A">stream-json events &#8594; one live interactive card in the chat</text>
+  <text x="600" y="320" text-anchor="middle" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12" fill="#7E8896">edits stream in place &#183; throttled ~400 ms &#183; the next message resumes the same session</text>
+</svg>

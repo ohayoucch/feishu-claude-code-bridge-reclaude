@@ -1,6 +1,18 @@
-# lark-channel-bridge-reclaude
+<p align="center">
+  <img src="./assets/readme/zh/hero.svg" width="100%" alt="lark-channel-bridge-reclaude — 在任何飞书会话里驱动你本机的 Claude Code。免公网 IP、免 webhook；扫码即用，鉴权交给 reclaude。">
+</p>
 
-飞书 ↔ 本地 Claude Code，走 [reclaude](https://reclaude.ai) 代理鉴权。
+私聊 bot，或在群里 `@` 它——消息在**你自己电脑上**装的那个 Claude Code 里执行，回复以一张实时刷新的交互卡片流式回到聊天里。
+
+- **免公网 IP、免 webhook。** bridge 主动*出站*一条 WebSocket 长连接直连飞书；终端扫码向导建应用，凭据落 `~/.lark-channel/config.json`。
+- **真会话。** 每个聊天各自续接自己的 Claude 会话；运行中发来的消息自动排队、合并进下一轮——每个聊天同时最多一个 run。
+- **reclaude 优先。** 向导自动探测 PATH 上的 `reclaude` 并用它拉起 Claude，HTTPS 代理、CA 证书、鉴权环境全程免配；改一行配置可退回裸 `claude`。
+
+## 怎么跑的
+
+<p align="center">
+  <img src="./assets/readme/zh/workflow.svg" width="100%" alt="消息链路：飞书会话 → 开放平台 WebSocket 长连接（仅出站）→ 本机 bridge 守护进程（launchd/systemd）→ reclaude → claude -p stream-json；事件流式渲染回一张实时交互卡片，约 400ms 节流。">
+</p>
 
 ## 要求
 

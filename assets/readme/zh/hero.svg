@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="340" viewBox="0 0 1200 340" role="img" aria-labelledby="title desc">
+  <title id="title">lark-channel-bridge-reclaude</title>
+  <desc id="desc">飞书直连你本机的 Claude Code，鉴权走 reclaude。右侧是一张正在流式更新的飞书交互卡片。</desc>
+
+  <rect width="1200" height="340" rx="18" fill="#0A0D12"/>
+  <rect x="0.75" y="0.75" width="1198.5" height="338.5" rx="17.25" fill="none" stroke="#232B38" stroke-width="1.5"/>
+
+  <g id="title-block" transform="translate(64 0)">
+    <text x="0" y="82" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13" letter-spacing="2.5">
+      <tspan fill="#6C9AFF">FEISHU / LARK</tspan><tspan fill="#7E8896"> &#8596; </tspan><tspan fill="#E8967A">LOCAL CLAUDE CODE</tspan>
+    </text>
+    <text x="0" y="148" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif" font-size="48" font-weight="700" letter-spacing="-0.5" fill="#E8EDF4">lark-channel-bridge</text>
+    <text x="0" y="202" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif" font-size="48" font-weight="700" letter-spacing="-0.5"><tspan fill="#7E8896">-</tspan><tspan fill="#D97757">reclaude</tspan></text>
+    <text x="0" y="246" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif" font-size="17.5" fill="#C7D1DC">在任何一个飞书会话里，驱动你自己电脑上的 Claude Code。</text>
+    <text x="0" y="272" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif" font-size="17.5" fill="#C7D1DC">免公网 IP、免 webhook &#8212; 扫码即用，代理、证书、鉴权交给 reclaude。</text>
+    <text x="0" y="308" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12.5" fill="#7E8896">macOS launchd &#183; Linux systemd &#183; Node &#8805; 20 &#183; MIT</text>
+  </g>
+
+  <g id="project-proof" transform="translate(752 40)">
+    <rect width="384" height="220" rx="14" fill="#10151D" stroke="#232B38" stroke-width="1.5"/>
+    <rect x="22" y="20" width="32" height="32" rx="9" fill="#3370FF"/>
+    <path d="M42 26 L31 40 H37.5 L34.5 46 L45.5 33.5 H38.5 Z" fill="#FFFFFF"/>
+    <text x="66" y="36" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif" font-size="15" font-weight="600" fill="#E8EDF4">Claude Code</text>
+    <text x="66" y="53" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11" fill="#7E8896">lark-channel-bridge &#183; session a3f2</text>
+    <rect x="280" y="24" width="82" height="24" rx="12" fill="none" stroke="#D97757" stroke-width="1.2"/>
+    <circle cx="296" cy="36" r="3" fill="#D97757"/>
+    <text x="306" y="40" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="11" fill="#E8967A">running</text>
+    <line x1="22" y1="70" x2="362" y2="70" stroke="#232B38" stroke-width="1"/>
+    <text x="26" y="98" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13"><tspan fill="#D97757">&#9656; </tspan><tspan fill="#E8EDF4">Read </tspan><tspan fill="#7E8896">src/bot/channel.ts</tspan></text>
+    <text x="26" y="124" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13"><tspan fill="#D97757">&#9656; </tspan><tspan fill="#E8EDF4">Edit </tspan><tspan fill="#7E8896">src/bot/keepalive.ts</tspan></text>
+    <text x="26" y="150" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="13"><tspan fill="#D97757">&#9656; </tspan><tspan fill="#E8EDF4">Bash </tspan><tspan fill="#7E8896">npm run build</tspan><tspan fill="#6C9AFF">  &#10003;</tspan></text>
+    <text x="26" y="180" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif" font-size="13" fill="#C7D1DC">搞定 &#8212; 重连看门狗已修复。</text>
+    <rect x="26" y="192" width="8" height="15" fill="#D97757"/>
+  </g>
+
+  <g id="local-process" transform="translate(752 288)">
+    <rect width="330" height="36" rx="9" fill="#0D1117" stroke="#232B38" stroke-width="1.5"/>
+    <text x="16" y="23" font-family="ui-monospace, SFMono-Regular, Menlo, monospace" font-size="12.5"><tspan fill="#6C9AFF">$ </tspan><tspan fill="#E8967A">reclaude</tspan><tspan fill="#7E8896"> &#8594; claude -p &#183; stream-json</tspan></text>
+  </g>
+
+  <g id="stream-motif" stroke-width="1.5" fill="none">
+    <path d="M934 262 V286" stroke="#3370FF"/>
+    <path d="M930 280 L934 285 L938 280" stroke="#3370FF"/>
+    <path d="M952 286 V262" stroke="#D97757"/>
+    <path d="M948 268 L952 263 L956 268" stroke="#D97757"/>
+  </g>
+</svg>
