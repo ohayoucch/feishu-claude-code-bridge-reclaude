@@ -188,15 +188,15 @@ class ManagedProfile {
         // `/exit` from chat stops THIS profile's channel; the supervisor lives on.
         self.onExitCommand(self.profile);
       },
-      async restart() {
-        await self.restart();
+      async restart(opts?: { ignoreAgentPreflight?: boolean }) {
+        await self.restart(opts);
       },
     };
     return currentControls;
   }
 
   /** Connect-before-disconnect reconnect for this profile (e.g. after /account). */
-  private async restart(): Promise<void> {
+  private async restart(opts?: { ignoreAgentPreflight?: boolean }): Promise<void> {
     if (this.restarting) return;
     this.restarting = true;
     let nextAppLock: AcquiredRuntimeLock | undefined;
@@ -214,7 +214,16 @@ class ManagedProfile {
         configPath: nextRuntime.configPath,
       });
       const availability = await checkRuntimeAgentAvailability(nextAgent);
-      if (!availability.ok) throw availability.error;
+      if (!availability.ok) {
+        // Keepalive force-reconnect must not die on a flaky agent preflight: the WS
+        // reconnect is the point; the agent is re-validated on the next run anyway.
+        // Manual /account restarts keep strict behavior (no opts passed).
+        if (!opts?.ignoreAgentPreflight) throw availability.error;
+        log.warn('supervisor', 'agent-preflight-degraded', {
+          profile: this.profile,
+          err: String(availability.error),
+        });
+      }
 
       const appChanged = next.accounts.app.id !== this.cfg.accounts.app.id;
       if (appChanged) {

@@ -49,7 +49,11 @@ export function createRuntimeAgent(
       larkChannel,
     });
   }
-  return new ClaudeAdapter({ larkChannel });
+  return new ClaudeAdapter({
+    larkChannel,
+    // Same escape hatch as agent-detection: lets deployments pin a wrapper (e.g. reclaude).
+    ...(process.env.LARK_CHANNEL_CLAUDE_BIN ? { binary: process.env.LARK_CHANNEL_CLAUDE_BIN } : {}),
+  });
 }
 
 export async function checkRuntimeAgentAvailability(agent: AgentAdapter): Promise<AgentAvailability> {

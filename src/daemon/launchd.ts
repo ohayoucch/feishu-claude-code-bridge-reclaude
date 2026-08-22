@@ -29,6 +29,7 @@ export interface PlistInputs {
   runArgs: string[];
   /** Root directory for config/profile state. */
   channelHome: string;
+  claudeBin?: string;
 }
 
 export function buildPlist(inputs: PlistInputs): string {
@@ -65,7 +66,7 @@ ${argStrings}
         <string>${escape(inputs.envPath)}</string>
         <key>LARK_CHANNEL_HOME</key>
         <string>${escape(inputs.channelHome)}</string>
-    </dict>
+${inputs.claudeBin ? `        <key>LARK_CHANNEL_CLAUDE_BIN</key>\n        <string>${escape(inputs.claudeBin)}</string>\n` : ''}    </dict>
 </dict>
 </plist>
 `;
@@ -83,6 +84,7 @@ export async function writePlist(profile: string, runArgs: string[] = ['run']): 
     profile,
     runArgs,
     channelHome: paths.rootDir,
+    ...(process.env.LARK_CHANNEL_CLAUDE_BIN ? { claudeBin: process.env.LARK_CHANNEL_CLAUDE_BIN } : {}),
   });
   const plistPath = launchAgentPlistPath(profile);
   await mkdir(dirname(plistPath), { recursive: true });
