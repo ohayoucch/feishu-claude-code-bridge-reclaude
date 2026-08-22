@@ -226,7 +226,7 @@ export async function runStart(opts: StartOptions): Promise<void> {
             async exit() {
               await stop('exit-command');
             },
-            async restart() {
+            async restart(opts?: { wait?: boolean; ignoreAgentPreflight?: boolean }) {
               if (restarting) return;
               restarting = true;
               let nextAppLock: AcquiredRuntimeLock | undefined;
@@ -245,7 +245,18 @@ export async function runStart(opts: StartOptions): Promise<void> {
                 });
                 const nextAvailability = await checkRuntimeAgentAvailability(nextAgent);
                 if (!nextAvailability.ok) {
-                  throw nextAvailability.error;
+                  // A keepalive-driven force-reconnect must not be blocked by an
+                  // agent preflight hiccup (e.g. `claude --version` timing out under
+                  // a network storm). Bring the IM channel back up anyway — the agent
+                  // is re-validated when the next run is submitted. Manual /account
+                  // swaps keep aborting hard so we never commit to a broken agent.
+                  if (opts?.ignoreAgentPreflight) {
+                    log.warn('reconnect', 'agent-preflight-degraded', {
+                      code: nextAvailability.diagnostic.code,
+                    });
+                  } else {
+                    throw nextAvailability.error;
+                  }
                 }
                 const appChanged = next.accounts.app.id !== cfg.accounts.app.id;
                 if (appChanged) {

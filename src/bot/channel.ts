@@ -410,7 +410,7 @@ export async function startChannel(deps: StartChannelDeps): Promise<BridgeChanne
   const keepalive = startKeepalive({
     channel,
     domain: probeDomain,
-    forceReconnect: () => controls.restart(),
+    forceReconnect: () => controls.restart({ ignoreAgentPreflight: true }),
   });
 
   return {
