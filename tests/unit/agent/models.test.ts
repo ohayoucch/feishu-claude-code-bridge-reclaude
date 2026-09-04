@@ -15,6 +15,9 @@ describe('agent model catalog', () => {
     expect(claude[0]?.value).toBe(DEFAULT_MODEL);
     expect(codex[0]?.value).toBe(DEFAULT_MODEL);
     expect(claude.map((m) => m.value)).toContain('claude-opus-4-8');
+    expect(claude.map((m) => m.value)).toEqual(
+      expect.arrayContaining(['claude-fable-5-1', 'claude-fable-5', 'claude-opus-5']),
+    );
     expect(codex.map((m) => m.value)).toContain('gpt-5-codex');
     expect(claude.map((m) => m.value)).not.toContain('gpt-5-codex');
   });
@@ -42,7 +45,8 @@ describe('agent model catalog', () => {
   });
 
   it('labels a stored value using the picker option text', () => {
-    expect(modelLabel('claude', 'claude-opus-4-8')).toBe('Opus 4.8（最新）');
+    expect(modelLabel('claude', 'claude-fable-5-1')).toBe('Fable 5.1（最新）');
+    expect(modelLabel('claude', 'claude-opus-4-8')).toBe('Opus 4.8');
     expect(modelLabel('claude', DEFAULT_MODEL)).toContain('跟随默认');
   });
 });
