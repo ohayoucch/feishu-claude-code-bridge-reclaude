@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { consumeCotEvents, CotClient, CotPublisher, cotBriefToolTitle, finalAnswerOnlyState } from '../../../src/bot/cot.js';
+import { consumeCotEvents, CotClient, CotPublisher, cotBriefToolTitle, finalAnswerOnlyState, fitCotContent } from '../../../src/bot/cot.js';
 import type { AgentEvent } from '../../../src/agent/types.js';
 import type { RunState } from '../../../src/card/run-state.js';
 
@@ -184,6 +184,44 @@ describe('COT event mapping', () => {
     expect(publisher.disabled).toBe(true);
     expect(publisher.degradedReason).toBe('field validation failed');
     expect(client.completed).toEqual([]);
+  });
+});
+
+describe('COT event size bound', () => {
+  it('keeps every event content within the message_cot 4096-byte limit in detailed mode', async () => {
+    const client = new FakeCotClient();
+    const publisher = new CotPublisher({
+      client,
+      chatId: 'oc_chat',
+      originMessageId: 'om_origin',
+      runId: 'run-size',
+      scope: 'oc_chat',
+      inputPreview: 'write',
+    });
+    await publisher.start();
+
+    await consumeCotEvents(iterate([
+      { type: 'thinking', delta: '思'.repeat(1200) },
+      { type: 'tool_use', id: 'tool-1', name: 'Write', input: { file_path: '/tmp/a.md', content: '中文内容。'.repeat(2000) } },
+      { type: 'tool_result', id: 'tool-1', output: '\n"'.repeat(1000), isError: false },
+      { type: 'done', terminationReason: 'normal' },
+    ]), publisher, { detail: 'detailed' });
+
+    expect(client.events.length).toBeGreaterThan(0);
+    for (const event of client.events) {
+      expect(Buffer.byteLength(event.content)).toBeLessThanOrEqual(4096);
+      expect(() => JSON.parse(event.content)).not.toThrow();
+    }
+    const args = client.events.find((event) => event.event_type === 'TOOL_CALL_ARGS');
+    expect(JSON.parse(args?.content ?? '{}').delta).toContain('file_path');
+  });
+
+  it('fitCotContent shrinks only the longest string field', () => {
+    const json = fitCotContent({ toolCallId: 'tool-1', delta: 'x'.repeat(10_000) });
+    expect(Buffer.byteLength(json)).toBeLessThanOrEqual(4096);
+    const parsed = JSON.parse(json) as { toolCallId: string; delta: string };
+    expect(parsed.toolCallId).toBe('tool-1');
+    expect(parsed.delta.endsWith('...')).toBe(true);
   });
 });
 

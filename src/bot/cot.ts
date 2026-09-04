@@ -12,6 +12,10 @@ const ENDPOINTS: Record<TenantBrand, string> = {
 const COT_UPDATE_THROTTLE_MS = 600;
 const COT_TOOL_OUTPUT_MAX = 1200;
 const COT_TEXT_MAX = 1200;
+// message_cot rejects an event whose serialized `content` exceeds 4096 bytes
+// (code=10001 "content too long"); the char caps above can still overflow with
+// CJK text or JSON escapes, so every event is also bounded by bytes.
+const COT_EVENT_MAX_BYTES = 4000;
 // Bounds every CoT HTTP call. Without it a hung message_cot endpoint pins
 // start() — which runs before any agent event is drained and before the
 // plain-reply fallback — to undici's ~300s default.
@@ -197,7 +201,7 @@ export class CotPublisher {
     if (this.disabled || !this.ref) return;
     this.buffer.push({
       event_type: eventType,
-      content: JSON.stringify(content),
+      content: fitCotContent(content),
       timestamp: Date.now(),
     });
     this.scheduleFlush();
@@ -310,7 +314,7 @@ export async function consumeCotEvents(
         if (detailed && evt.input !== undefined) {
           publisher.enqueue('TOOL_CALL_ARGS', {
             toolCallId,
-            delta: JSON.stringify(evt.input),
+            delta: truncateCot(JSON.stringify(evt.input), COT_TOOL_OUTPUT_MAX),
           });
         }
         publisher.enqueue('TOOL_CALL_END', { toolCallId });
@@ -423,6 +427,26 @@ function cotToolIcon(name: string): string {
 function truncateCot(value: unknown, max: number): string {
   const text = String(value ?? '');
   return text.length > max ? `${text.slice(0, max)}...` : text;
+}
+
+/** Serialize an event payload, shrinking its longest string field until the JSON fits {@link COT_EVENT_MAX_BYTES}. */
+export function fitCotContent(content: unknown): string {
+  let json = JSON.stringify(content);
+  if (Buffer.byteLength(json) <= COT_EVENT_MAX_BYTES) return json;
+  if (typeof content !== 'object' || content === null) return json;
+  const obj: Record<string, unknown> = { ...(content as Record<string, unknown>) };
+  const key = Object.keys(obj)
+    .filter((k) => typeof obj[k] === 'string')
+    .sort((a, b) => (obj[b] as string).length - (obj[a] as string).length)[0];
+  if (key === undefined) return json;
+  let text = obj[key] as string;
+  while (text.length > 0 && Buffer.byteLength(json) > COT_EVENT_MAX_BYTES) {
+    const ratio = COT_EVENT_MAX_BYTES / Buffer.byteLength(json);
+    text = text.slice(0, Math.max(0, Math.floor(text.length * ratio) - 4));
+    obj[key] = `${text}...`;
+    json = JSON.stringify(obj);
+  }
+  return json;
 }
 
 function stringValue(value: unknown): string | undefined {
