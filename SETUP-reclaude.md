@@ -1,8 +1,10 @@
-# SETUP-reclaude.md —— 在你的机器上部署 `reclaude/0.7.0`
+# SETUP-reclaude.md —— 在你的机器上部署 `reclaude/0.7.1`
 
 > **这份手册是写给 agent 看的**：把它连同本仓库一起交给你机器上的 AI，让它照着执行。
-> 本分支 `reclaude/0.7.0` = 上游 `lark-coding-agent-bridge` **0.7.0** + 4 个补丁，
+> 本分支 `reclaude/0.7.1` = 上游 `lark-coding-agent-bridge` **0.7.1** + 4 个补丁，
 > 让飞书 bridge 的 daemon spawn **reclaude**（claude 兼容 wrapper）而不是真 `claude`。
+> 相对 `reclaude/0.7.0`：合入上游 0.7.1（`@larksuite/channel` 升 0.6.0，会议 bot 改用 SDK 公开事件订阅）、
+> 模型选择器加入 Fable 5.1 / Opus 5、COT 过程消息按飞书 4096 字节上限截断。配置与 plist 均无变化。
 
 ---
 
@@ -28,7 +30,7 @@
 | 1 | `src/runtime/agent-runtime.ts` | 把 `LARK_CHANNEL_CLAUDE_BIN` 透传进 `ClaudeAdapter` 的 `binary` |
 | 2 | `src/daemon/launchd.ts` | 把 `LARK_CHANNEL_CLAUDE_BIN` 烤进 plist 的 `EnvironmentVariables` |
 | 3 | `src/runtime/supervisor.ts` + `src/bot/channel.ts` + `src/commands/index.ts` | keepalive 强制重连时降级 agent 预检，不因预检抖动而断线 |
-| 4 | `src/agent/models.ts` | 模型选择器加入 Fable 5 |
+| 4 | `src/agent/models.ts` | 模型选择器加入 Fable 5.1 / Fable 5 / Opus 5 |
 
 补丁 1 是可选开关：**不设 `LARK_CHANNEL_CLAUDE_BIN` 就自动退回原生 `claude`**，不装 reclaude 也能用。
 
@@ -66,7 +68,7 @@ which reclaude             # 要用 reclaude 就必须能出路径（通常 ~/.l
 
 ```bash
 NEW=~/projects/lark-bridge-reclaude          # 路径任选，但不要有空格；start 之后不要再移动它
-git clone -b reclaude/0.7.0 \
+git clone -b reclaude/0.7.1 \
   https://github.com/ohayoucch/feishu-claude-code-bridge-reclaude.git "$NEW"
 cd "$NEW"
 pnpm install                                  # 会自动触发 prepare → build
@@ -113,15 +115,15 @@ node dist/cli.js start
 
 ---
 
-## B. 从 `reclaude/0.2.2` 升级
+## B. 从 `reclaude/0.2.2` 或 `reclaude/0.7.0` 升级
 
-好消息：这一跳是**就地升级**，不需要 `migrate`，不需要重新扫码。
+好消息：两个起点都是**就地升级**，不需要 `migrate`，不需要重新扫码。
 
-| | 0.2.2 | 0.7.0 |
-|---|---|---|
-| `config.json` 的 `schemaVersion` | 2 | 2（不变） |
-| launchd plist label | `ai.lark-channel-bridge.bot.<profile>` | 同一个函数，不变 |
-| profile 配置字段 | — | 只**新增** `mode`、`meeting` |
+| | 0.2.2 | 0.7.0 | 0.7.1 |
+|---|---|---|---|
+| `config.json` 的 `schemaVersion` | 2 | 2 | 2（不变） |
+| launchd plist label | `ai.lark-channel-bridge.bot.<profile>` | 不变 | 不变 |
+| profile 配置字段 | — | **新增** `mode`、`meeting` | 无变化 |
 
 所以旧 plist 不用删、旧 config 不用动。
 
@@ -139,7 +141,7 @@ node "$OLD/dist/cli.js" status                                 # 确认旧 daemo
 ### B1. 备份
 
 ```bash
-BAK=~/.lark-channel.bak-0.2.2-$(date +%Y%m%d)
+BAK=~/.lark-channel.bak-$(date +%Y%m%d)
 cp -Rp ~/.lark-channel "$BAK" && echo "备份完成：$BAK"
 ```
 
@@ -151,10 +153,10 @@ cp -Rp ~/.lark-channel "$BAK" && echo "备份完成：$BAK"
 ```bash
 cd "$OLD"
 # set-branches 是为了兼容当初用 --single-branch clone 的情况，否则 fetch 不到新分支
-git remote set-branches --add origin reclaude/0.7.0
-git fetch origin reclaude/0.7.0
-git checkout reclaude/0.7.0
-pnpm install                                   # 自动重新 build（中国网络加 --registry）
+git remote set-branches --add origin reclaude/0.7.1
+git fetch origin reclaude/0.7.1
+git checkout reclaude/0.7.1
+pnpm install                                   # 自动重新 build；依赖有更新，需联网（中国网络加 --registry）
 grep -c LARK_CHANNEL_CLAUDE_BIN dist/cli.js    # 应 >= 4
 node dist/cli.js restart
 ```
@@ -164,7 +166,7 @@ node dist/cli.js restart
 
 ```bash
 NEW=~/projects/lark-bridge-reclaude
-git clone -b reclaude/0.7.0 \
+git clone -b reclaude/0.7.1 \
   https://github.com/ohayoucch/feishu-claude-code-bridge-reclaude.git "$NEW"
 cd "$NEW" && pnpm install
 node "$OLD/dist/cli.js" stop                   # 先停旧的
@@ -230,7 +232,7 @@ grep 不到就是**退回了真 claude**：检查第 1 步的 plist，重新 `ex
 ```bash
 node dist/cli.js stop
 rm -rf ~/.lark-channel && mv "$BAK" ~/.lark-channel     # 还原备份
-cd "$OLD" && git checkout reclaude/0.2.2 && pnpm install   # 回到旧分支重建
+cd "$OLD" && git checkout <升级前的分支> && pnpm install   # 回到旧分支重建，如 reclaude/0.7.0
 node dist/cli.js start                                   # 注意先 export LARK_CHANNEL_CLAUDE_BIN
 ```
 
