@@ -4,6 +4,8 @@ A lightweight bot that bridges Feishu / Lark messenger with your local Claude Co
 
 [中文 README](./README.zh.md)
 
+> **This is the `reclaude` fork of [lark-channel-bridge](https://github.com/zarazhangrui/lark-coding-agent-bridge).** Upstream plus a few patches so the background service can spawn `reclaude` (a drop-in `claude` wrapper) instead of `claude`, with extra models in the picker and a fix for oversized COT events. Leave the wrapper unconfigured and it behaves exactly like upstream. It is **not published to npm** — clone and build it as described in [Install](#install).
+
 For a product walkthrough, see the [Feishu document](https://larkcommunity.feishu.cn/docx/OaRIdFIRFoLM3xxTmKwcetHqn5e).
 
 ## What it does
@@ -24,14 +26,35 @@ For a product walkthrough, see the [Feishu document](https://larkcommunity.feish
   - Claude Code: `claude`, see https://docs.anthropic.com/en/docs/claude-code/quickstart
   - Codex CLI: `codex`, see https://developers.openai.com/codex/cli
 - A Feishu / Lark **PersonalAgent** app. The first-run QR wizard can create and bind one for you.
+- `pnpm` (the build scripts use it): `npm i -g pnpm` or `corepack enable pnpm`
+- Optional: `reclaude` on `PATH`, if you want the bridge to spawn the wrapper instead of `claude` — see [reclaude](#reclaude)
 
 ## Install
 
+`npm i -g lark-channel-bridge` installs **upstream**, without the patches in this fork — the bot still works, but the wrapper is silently never spawned. Clone and build this branch instead:
+
 ```bash
-npm i -g lark-channel-bridge
-# or
-pnpm add -g lark-channel-bridge
+git clone -b reclaude/0.7.1 https://github.com/ohayoucch/feishu-claude-code-bridge-reclaude.git lark-channel-bridge
+cd lark-channel-bridge
+pnpm install         # builds dist/ through the prepare script
+pnpm link --global   # puts the `lark-channel-bridge` command on PATH
 ```
+
+In mainland China, point the registry and the Node mirror at npmmirror before installing:
+
+```bash
+export NODEJS_ORG_MIRROR=https://npmmirror.com/mirrors/node
+pnpm install --registry=https://registry.npmmirror.com
+```
+
+Check that you built the right thing:
+
+```bash
+lark-channel-bridge --version                 # 0.7.1
+grep -c LARK_CHANNEL_CLAUDE_BIN dist/cli.js   # >= 4; 0 means the build failed or you are on the wrong branch
+```
+
+If `pnpm link --global` complains that it has no global bin directory, run `pnpm setup`, open a new terminal, and retry. Every `lark-channel-bridge` command in this README also works as `node dist/cli.js` from the repo directory. The background service records the absolute path it was started from, so do not move the repo or remove the global link after `start`.
 
 ## First run
 
@@ -69,6 +92,15 @@ lark-channel-bridge status
 lark-channel-bridge stop
 ```
 
+To have the service spawn `reclaude`, export the wrapper name **before** `start` (details in [reclaude](#reclaude)):
+
+```bash
+export LARK_CHANNEL_CLAUDE_BIN=reclaude
+lark-channel-bridge start
+```
+
+`start` writes the service definition from the current shell environment, so a `start` without the export silently reverts the daemon to plain `claude`. `restart` reuses the existing definition and so does a reboot; neither needs the export.
+
 Install globally before using service commands. The daemon's launchd plist / systemd unit / Windows task records the bridge CLI path; if that path comes from an npm temp cache through `npx`, the daemon can break when the cache is cleaned. `run` is fine through `npx` as a one-shot foreground process.
 
 Service commands install a per-profile service:
@@ -103,6 +135,31 @@ For example, to restart only the Codex bot:
 lark-channel-bridge restart --profile codex
 lark-channel-bridge status --profile codex
 ```
+
+## reclaude
+
+`reclaude` is a drop-in wrapper around `claude`: same command line, but it prepares its own credentials, proxy and CA before exec-ing the real binary. Upstream reads `LARK_CHANNEL_CLAUDE_BIN` only while probing the agent, hard-codes `claude` at run time, and its launchd plist passes through nothing but `PATH` and `LARK_CHANNEL_HOME` — so the wrapper is detected but never spawned. This fork patches that:
+
+| Patch | Files | Effect |
+|---|---|---|
+| Binary override | `src/runtime/agent-runtime.ts` | `LARK_CHANNEL_CLAUDE_BIN` is handed to the Claude adapter as the binary to spawn |
+| Service environment | `src/daemon/launchd.ts` | the variable is baked into the launchd plist so the daemon sees it |
+| Reconnect resilience | `src/runtime/supervisor.ts`, `src/bot/channel.ts`, `src/commands/index.ts` | a keepalive-triggered reconnect no longer aborts when the agent version probe times out |
+| Model picker | `src/agent/models.ts` | Fable 5.1, Fable 5 and Opus 5 in `/config` |
+| COT size bound | `src/bot/cot.ts` | process-message events are truncated to Feishu's 4096-byte limit instead of being rejected |
+
+The override is opt-in: with `LARK_CHANNEL_CLAUDE_BIN` unset the bridge spawns plain `claude`, exactly like upstream.
+
+**Verify that the wrapper is really being used.** After `start`, send the bot any message (for example `1+1`), then:
+
+```bash
+grep -A1 CLAUDE_BIN ~/Library/LaunchAgents/ai.lark-channel-bridge.bot.claude.plist   # expect reclaude
+grep -h -m1 "同步配置" $(ls -t ~/.lark-channel/profiles/claude/logs/bridge-*.jsonl | head -2)
+```
+
+`同步配置…` is a string only the reclaude binary prints (`grep -ac 同步配置 $(which reclaude)` is non-zero; the same on `$(which claude)` is zero). No such log line means the daemon fell back to `claude`: export the variable and run `start` again.
+
+**Platform limits.** Only the macOS launchd service passes the variable through. On Linux (`src/daemon/systemd.ts`) and Windows (`src/daemon/schtasks.ts`) the daemon cannot see it; run `lark-channel-bridge run` from a shell that has the export, or add the variable to the generated unit yourself.
 
 ## Commands
 
@@ -305,11 +362,33 @@ Cloud-doc comments do not need a separate workspace binding or document allowlis
 
 ## FAQ
 
+**The wrapper is never spawned (no `同步配置` line in the logs).** The service definition was written without `LARK_CHANNEL_CLAUDE_BIN`, usually by a `start` from a shell that did not export it. Export it and run `start` again; see [reclaude](#reclaude).
+
 **The bot stays silent or the local CLI never replies.** Usually the local `claude` or `codex` CLI is not logged in, or the current session points to a working directory that no longer exists. Send `/status` to inspect; `/new` often fixes it by starting a fresh session.
 
 **The agent subprocess looks frozen (card stuck on the last frame).** The bridge supports an idle watchdog: if the agent emits nothing for N minutes, the process is killed and the card is annotated with the auto-termination reason. Disabled by default. Enable with `/config` globally, or `/timeout 10` for the current session; `/timeout off` disables it for the session; `/timeout default` clears the session override.
 
 **The agent says it cannot see an image I sent.** Upgrade to the latest version. Releases before 0.1.0 had a filename-dedup bug.
+
+## Upgrading
+
+Moving between `reclaude/*` branches is an in-place upgrade: the config schema, the service definition and the encrypted secrets have not changed since `reclaude/0.2.2`, so there is no `migrate` step and no new QR scan. Back up, switch branches in the same directory, rebuild, then `restart` (which keeps the service definition, `LARK_CHANNEL_CLAUDE_BIN` included):
+
+```bash
+cp -Rp ~/.lark-channel ~/.lark-channel.bak-$(date +%Y%m%d)
+cd <repo>
+git remote set-branches --add origin reclaude/0.7.1   # only needed if the repo was cloned with --single-branch
+git fetch origin reclaude/0.7.1
+git checkout reclaude/0.7.1
+pnpm install                                          # rebuilds dist/; dependencies changed, so it needs network access
+lark-channel-bridge restart
+```
+
+If you clone into a **new** directory instead, the old service still points at the old path: `stop` it there, then `export LARK_CHANNEL_CLAUDE_BIN=reclaude` and `start` from the new directory.
+
+To roll back, check out the previous branch, `pnpm install`, `restart`, and restore the `~/.lark-channel` backup if needed. Keep the backup until the new version has proven itself.
+
+`~/.lark-channel` cannot be copied to another machine: `secrets.enc` is encrypted with a key derived from the hostname and user name (`src/config/keystore.ts`). A new machine has to scan the QR code again or re-enter the App Secret.
 
 ## Testing and CI
 
@@ -322,6 +401,8 @@ pnpm build
 ```
 
 `pnpm test` includes unit, integration, and process-level adapter tests. CI runs on macOS, Ubuntu, and Windows with `pnpm install --frozen-lockfile`, `pnpm test`, `pnpm typecheck`, and `pnpm build`.
+
+In a local macOS run, `pnpm test` currently reports five failing upstream logger/observability tests; upstream `main` shows the same five, so they are unrelated to this fork.
 
 ## Optional telemetry
 

@@ -4,6 +4,8 @@
 
 [English README](./README.md)
 
+> **这是 [lark-channel-bridge](https://github.com/zarazhangrui/lark-coding-agent-bridge) 的 `reclaude` 分支。** 在上游基础上打了几个补丁，让后台服务 spawn `reclaude`（`claude` 的兼容 wrapper）而不是 `claude`，并在模型选择器里加了几个模型、修了 COT 事件超长被拒的问题。不配置 wrapper 时行为和上游完全一致。本分支**没有发布到 npm**，请按[安装](#安装)一节 clone 后自行 build。
+
 关于能实现的效果，详情可以阅读[飞书文档](https://larkcommunity.feishu.cn/docx/OaRIdFIRFoLM3xxTmKwcetHqn5e)
 
 ## 主要功能
@@ -24,14 +26,35 @@
   - Claude Code：`claude`，安装说明：https://docs.anthropic.com/en/docs/claude-code/quickstart
   - Codex CLI：`codex`，安装说明：https://developers.openai.com/codex/cli
 - 一个飞书 / Lark PersonalAgent 应用。首次启动的扫码向导可以帮你创建并绑定。
+- `pnpm`（build 脚本依赖）：`npm i -g pnpm` 或 `corepack enable pnpm`
+- 可选：`reclaude` 在 `PATH` 里。想让 bridge 用 wrapper 代替 `claude` 才需要，见 [reclaude](#reclaude)
 
 ## 安装
 
+`npm i -g lark-channel-bridge` 装的是**上游包**，没有本分支的补丁 —— bot 照样能收发消息，只是 wrapper 永远不会被 spawn，从表面看不出来。请 clone 本分支自行 build：
+
 ```bash
-npm i -g lark-channel-bridge
-# 或
-pnpm add -g lark-channel-bridge
+git clone -b reclaude/0.7.1 https://github.com/ohayoucch/feishu-claude-code-bridge-reclaude.git lark-channel-bridge
+cd lark-channel-bridge
+pnpm install         # 通过 prepare 脚本自动 build 出 dist/
+pnpm link --global   # 把 `lark-channel-bridge` 命令放进 PATH
 ```
+
+中国大陆网络先切镜像再装：
+
+```bash
+export NODEJS_ORG_MIRROR=https://npmmirror.com/mirrors/node
+pnpm install --registry=https://registry.npmmirror.com
+```
+
+确认 build 的是对的东西：
+
+```bash
+lark-channel-bridge --version                 # 0.7.1
+grep -c LARK_CHANNEL_CLAUDE_BIN dist/cli.js   # 应 >= 4；为 0 说明 build 没成功或分支不对
+```
+
+`pnpm link --global` 提示没有全局 bin 目录的话，先执行 `pnpm setup`，开一个新终端再试。本文档里所有 `lark-channel-bridge` 命令都可以在仓库目录下用 `node dist/cli.js` 代替。后台服务会记录启动时的绝对路径，`start` 之后不要移动仓库目录，也不要解除全局链接。
 
 ## 首次启动
 
@@ -69,6 +92,15 @@ lark-channel-bridge status
 lark-channel-bridge stop
 ```
 
+要让服务 spawn `reclaude`，必须在 `start` **之前** export wrapper 的名字（详见 [reclaude](#reclaude)）：
+
+```bash
+export LARK_CHANNEL_CLAUDE_BIN=reclaude
+lark-channel-bridge start
+```
+
+`start` 会按当前 shell 的环境变量重写服务定义，没 export 就 `start` 会悄悄退回真 `claude`。`restart` 和重启机器都沿用现有的服务定义，不需要 export。
+
 服务层命令必须先全局安装，不能直接用 `npx`。daemon 的 launchd plist / systemd unit / Windows 任务会记录 bridge CLI 的路径；如果这个路径来自 npm 临时缓存，缓存清掉后 daemon 就起不来。`run` 用 `npx` 单次启动没问题。
 
 服务层命令按 profile 注册，每个 profile 有独立服务：
@@ -103,6 +135,31 @@ lark-channel-bridge start --profile codex --agent codex
 lark-channel-bridge restart --profile codex
 lark-channel-bridge status --profile codex
 ```
+
+## reclaude
+
+`reclaude` 是 `claude` 的兼容 wrapper：命令行完全一样，只是在 exec 真正的二进制之前先准备好自己的凭据、代理和 CA。上游只在**探测** agent 时读 `LARK_CHANNEL_CLAUDE_BIN`，**运行期**写死 `claude`，launchd plist 也只透传 `PATH` 和 `LARK_CHANNEL_HOME`，所以 wrapper 被探测到却永远不会被 spawn。本分支的补丁：
+
+| 补丁 | 文件 | 作用 |
+|---|---|---|
+| 二进制覆盖 | `src/runtime/agent-runtime.ts` | 把 `LARK_CHANNEL_CLAUDE_BIN` 作为要 spawn 的二进制传给 Claude adapter |
+| 服务环境变量 | `src/daemon/launchd.ts` | 把该变量烤进 launchd plist，daemon 才看得到 |
+| 重连韧性 | `src/runtime/supervisor.ts`、`src/bot/channel.ts`、`src/commands/index.ts` | keepalive 触发的强制重连不再因为 agent 版本探测超时而中断 |
+| 模型选择器 | `src/agent/models.ts` | `/config` 里加入 Fable 5.1、Fable 5、Opus 5 |
+| COT 长度上限 | `src/bot/cot.ts` | 过程消息事件按飞书 4096 字节上限截断，而不是被整条拒掉 |
+
+覆盖是可选的：不设 `LARK_CHANNEL_CLAUDE_BIN` 就 spawn 真 `claude`，和上游一模一样。
+
+**验证 wrapper 真的在跑。** `start` 之后在飞书里随便给 bot 发一句（比如 `1+1`），然后：
+
+```bash
+grep -A1 CLAUDE_BIN ~/Library/LaunchAgents/ai.lark-channel-bridge.bot.claude.plist   # 应为 reclaude
+grep -h -m1 "同步配置" $(ls -t ~/.lark-channel/profiles/claude/logs/bridge-*.jsonl | head -2)
+```
+
+`同步配置…` 是 reclaude 二进制独有的字符串（`grep -ac 同步配置 $(which reclaude)` 非零，换成 `$(which claude)` 为零）。日志里没有这行就是退回了 `claude`：export 之后重新 `start`。
+
+**平台限制。** 只有 macOS 的 launchd 服务透传了这个变量。Linux（`src/daemon/systemd.ts`）和 Windows（`src/daemon/schtasks.ts`）的 daemon 拿不到它；要么在已 export 的 shell 里前台 `lark-channel-bridge run`，要么自己给生成的 unit 加环境变量。
 
 ## 命令速查
 
@@ -305,11 +362,33 @@ grep '"event":"enter"' ~/.lark-channel/profiles/<profile>/logs/bridge-$(date +%Y
 
 ## 常见问题
 
+**wrapper 从来没被 spawn（日志里没有 `同步配置`）**：服务定义里没有 `LARK_CHANNEL_CLAUDE_BIN`，多半是在没 export 的 shell 里执行了 `start`。export 之后重新 `start`，见 [reclaude](#reclaude)。
+
 **bot 没反应 / agent 不回复**：通常是本机 `claude` 或 `codex` CLI 没登录，或者当前会话指向了不存在的工作目录。发 `/status` 看当前状态；`/new` 重开会话往往就好。
 
 **agent 子进程假死（卡片停在最后一帧不动）**：支持 idle 探活。agent 一段时间没输出就会被 SIGTERM kill，卡片末尾会标出自动终止原因。默认关闭。开启方式：`/config` 设全局值（分钟），或 `/timeout 10` 只对当前会话生效；`/timeout off` 关掉当前会话的探活；`/timeout default` 清掉会话覆盖，回退到全局设置。
 
 **图片发过去 agent 说看不到**：升级到最新版，0.1.0 之前的版本有文件名去重 bug。
+
+## 升级
+
+`reclaude/*` 分支之间是就地升级：配置 schema、服务定义和加密 secret 自 `reclaude/0.2.2` 起都没变，不需要 `migrate`，也不用重新扫码。先备份，在同一目录切分支重建，然后 `restart`（沿用现有服务定义，`LARK_CHANNEL_CLAUDE_BIN` 自动保留）：
+
+```bash
+cp -Rp ~/.lark-channel ~/.lark-channel.bak-$(date +%Y%m%d)
+cd <仓库目录>
+git remote set-branches --add origin reclaude/0.7.1   # 当初用 --single-branch clone 的才需要
+git fetch origin reclaude/0.7.1
+git checkout reclaude/0.7.1
+pnpm install                                          # 重新 build dist/；依赖有更新，需要联网
+lark-channel-bridge restart
+```
+
+如果是 clone 到**新目录**，旧服务仍指向旧路径：先在旧目录 `stop`，再在新目录 `export LARK_CHANNEL_CLAUDE_BIN=reclaude` 后 `start`。
+
+回滚就是切回之前的分支、`pnpm install`、`restart`，必要时还原 `~/.lark-channel` 备份。新版本稳定之前不要删备份。
+
+`~/.lark-channel` 不能拷到另一台机器：`secrets.enc` 的密钥由主机名和用户名派生（`src/config/keystore.ts`），换机器必须重新扫码或重新输入 App Secret。
 
 ## 测试与 CI
 
@@ -322,6 +401,8 @@ pnpm build
 ```
 
 `pnpm test` 包含 unit、integration 和 process-level adapter 测试。CI 在 macOS、Ubuntu、Windows 上执行 `pnpm install --frozen-lockfile`、`pnpm test`、`pnpm typecheck` 和 `pnpm build`。
+
+本地 macOS 跑 `pnpm test` 目前会有 5 个上游的 logger / observability 测试失败；上游 `main` 同样是这 5 个，与本分支无关。
 
 ## 可选：遥测（Telemetry）
 
