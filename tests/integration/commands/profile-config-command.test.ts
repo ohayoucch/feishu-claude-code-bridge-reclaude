@@ -113,6 +113,37 @@ describe('profile-aware account and config commands', () => {
     expect(cleared.profiles.claude?.preferences.model).toBeUndefined();
   });
 
+  it('persists the picked effort, keeps it when omitted, and clears it on "default"', async () => {
+    vi.useFakeTimers();
+    const h = await createHarness();
+
+    await h.command('/config submit', {
+      effort: 'xhigh',
+      message_reply: 'text',
+    });
+    const withEffort = await waitForRoot(h.rootDir, (candidate) =>
+      candidate.profiles.claude?.preferences.effort === 'xhigh',
+    );
+    expect(withEffort.profiles.claude?.preferences.effort).toBe('xhigh');
+
+    await h.command('/config submit', {
+      message_reply: 'markdown',
+    });
+    const kept = await waitForRoot(h.rootDir, (candidate) =>
+      candidate.profiles.claude?.preferences.messageReply === 'markdown',
+    );
+    expect(kept.profiles.claude?.preferences.effort).toBe('xhigh');
+
+    await h.command('/config submit', {
+      effort: 'default',
+      message_reply: 'text',
+    });
+    const cleared = await waitForRoot(h.rootDir, (candidate) =>
+      candidate.profiles.claude?.preferences.effort === undefined,
+    );
+    expect(cleared.profiles.claude?.preferences.effort).toBeUndefined();
+  });
+
   it('keeps the current message reply mode when the config submit payload omits it', async () => {
     vi.useFakeTimers();
     const h = await createHarness({

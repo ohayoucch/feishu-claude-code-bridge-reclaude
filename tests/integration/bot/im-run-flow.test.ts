@@ -100,6 +100,31 @@ describe('IM run flow', () => {
     expect(h.agent.runOptions[0]?.cwd).toBe(workspaceRealpath);
   });
 
+  it('forwards the picked model and effort to the agent run', async () => {
+    const h = await createHarness({ defaultWorkspace: true });
+    const profileConfig = {
+      ...h.profileConfig,
+      preferences: { model: 'claude-opus-5-5', effort: 'xhigh' },
+    };
+
+    const result = await startRunFlow({
+      scopeId: 'chat-1',
+      scope: { source: 'im', chatId: 'chat-1', actorId: 'ou_user' },
+      prompt: 'hello',
+      attachments: [],
+      access: { ok: true, reason: 'allowed-user' },
+      capability: claudeCapability(profileConfig),
+      profileConfig,
+      sessions: h.sessions,
+      workspaces: h.workspaces,
+      executor: h.executor,
+      now: 1000,
+    });
+
+    expect(result.ok).toBe(true);
+    expect(h.agent.runOptions[0]).toMatchObject({ model: 'claude-opus-5-5', effort: 'xhigh' });
+  });
+
 });
 
 async function createHarness(options: { defaultWorkspace?: boolean } = {}): Promise<{

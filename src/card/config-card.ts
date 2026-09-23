@@ -1,3 +1,4 @@
+import { effortLabel, supportedEfforts } from '../agent/efforts';
 import { modelLabel, supportedModels } from '../agent/models';
 import type { KnownChat } from '../bot/lark-info';
 import type { AgentKind, LarkCliIdentityPreset, ProfileMode } from '../config/profile-schema';
@@ -10,6 +11,8 @@ export interface ConfigFormOpts {
   mode: ProfileMode;
   /** Current model selection (a value from {@link supportedModels}). */
   model: string;
+  /** Current effort selection (a value from {@link supportedEfforts}). */
+  effort: string;
   messageReply: MessageReplyMode;
   showToolCalls: boolean;
   cotMessages: CotMessagesMode;
@@ -60,6 +63,31 @@ function chatList(chatIds: string[], knownChats: KnownChat[]): string {
   return chatIds
     .map((id) => `- **${nameMap.get(id) ?? '(未知群)'}**（...${id.slice(-6)}）`)
     .join('\n');
+}
+
+/** Effort picker for the form; omitted for agents without effort levels. */
+function effortPicker(opts: ConfigFormOpts): object[] {
+  const efforts = supportedEfforts(opts.agentKind);
+  if (efforts.length === 0) return [];
+  return [
+    {
+      tag: 'markdown',
+      content:
+        '\n**Effort 推理强度**\n' +
+        '_越高想得越深,也越慢、越耗额度_\n' +
+        '_「跟随默认」= 不指定,由 CLI/账号决定_\n' +
+        '_模型不支持的档位会自动降档_',
+    },
+    {
+      tag: 'select_static',
+      name: 'effort',
+      initial_option: opts.effort,
+      options: efforts.map((e) => ({
+        text: { tag: 'plain_text', content: e.label },
+        value: e.value,
+      })),
+    },
+  ];
 }
 
 /** Form card for `/config`. */
@@ -169,6 +197,7 @@ export function configFormCard(opts: ConfigFormOpts): object {
                 value: m.value,
               })),
             },
+            ...effortPicker(opts),
             { tag: 'hr' },
             {
               tag: 'markdown',
@@ -349,6 +378,9 @@ export function configSavedCard(opts: ConfigFormOpts): object {
             '✅ **偏好已保存**\n\n' +
             `**运行模式**:\`${opts.mode === 'team' ? '团队版' : '个人版'}\`\n` +
             `**模型**:\`${modelLabel(opts.agentKind, opts.model)}\`\n` +
+            (supportedEfforts(opts.agentKind).length > 0
+              ? `**Effort 推理强度**:\`${effortLabel(opts.agentKind, opts.effort)}\`\n`
+              : '') +
             `**消息回复方式**:${replyLabel}\n` +
             `**工具调用显示**:\`${opts.showToolCalls ? 'show' : 'hide'}\`\n` +
             `**COT 过程消息**:\`${cotLabel}\`\n` +

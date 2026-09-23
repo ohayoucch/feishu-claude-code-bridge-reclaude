@@ -4,7 +4,7 @@ A lightweight bot that bridges Feishu / Lark messenger with your local Claude Co
 
 [中文 README](./README.zh.md)
 
-> **This is the `reclaude` fork of [lark-channel-bridge](https://github.com/zarazhangrui/lark-coding-agent-bridge).** Upstream plus a few patches so the background service can spawn `reclaude` (a drop-in `claude` wrapper) instead of `claude`, with extra models in the picker and and a fix for oversized COT events. Leave the wrapper unconfigured and it behaves exactly like upstream. It is **not published to npm** — clone and build it as described in [Install](#install).
+> **This is the `reclaude` fork of [lark-channel-bridge](https://github.com/zarazhangrui/lark-coding-agent-bridge).** Upstream plus a few patches so the background service can spawn `reclaude` (a drop-in `claude` wrapper) instead of `claude`, with extra models in the picker, an effort picker in `/config`, and a fix for oversized COT events. Leave the wrapper unconfigured and it behaves exactly like upstream. It is **not published to npm** — clone and build it as described in [Install](#install).
 
 For a product walkthrough, see the [Feishu document](https://larkcommunity.feishu.cn/docx/OaRIdFIRFoLM3xxTmKwcetHqn5e).
 
@@ -146,6 +146,7 @@ lark-channel-bridge status --profile codex
 | Service environment | `src/daemon/launchd.ts` | the variable is baked into the launchd plist so the daemon sees it |
 | Reconnect resilience | `src/runtime/supervisor.ts`, `src/bot/channel.ts`, `src/commands/index.ts` | a keepalive-triggered reconnect no longer aborts when the agent version probe times out |
 | Model picker | `src/agent/models.ts` | Fable 5.1, Fable 5, Opus 5.5 and Opus 5 in `/config` |
+| Effort picker | `src/agent/efforts.ts`, `src/card/config-card.ts`, `src/commands/index.ts`, `src/config/schema.ts`, `src/bot/run-flow.ts`, `src/runtime/run-executor.ts`, `src/agent/types.ts`, `src/agent/claude/adapter.ts` | reasoning effort picked in `/config`, forwarded to claude as `--effort`; "follow default" passes nothing |
 | COT size bound | `src/bot/cot.ts` | process-message events are truncated to Feishu's 4096-byte limit instead of being rejected |
 
 The override is opt-in: with `LARK_CHANNEL_CLAUDE_BIN` unset the bridge spawns plain `claude`, exactly like upstream.

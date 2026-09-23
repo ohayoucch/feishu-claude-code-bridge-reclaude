@@ -4,7 +4,7 @@
 
 [English README](./README.md)
 
-> **这是 [lark-channel-bridge](https://github.com/zarazhangrui/lark-coding-agent-bridge) 的 `reclaude` 分支。** 在上游基础上打了几个补丁，让后台服务 spawn `reclaude`（`claude` 的兼容 wrapper）而不是 `claude`，并在模型选择器里加了几个模型、修了 COT 事件超长被拒的问题。不配置 wrapper 时行为和上游完全一致。本分支**没有发布到 npm**，请按[安装](#安装)一节 clone 后自行 build。
+> **这是 [lark-channel-bridge](https://github.com/zarazhangrui/lark-coding-agent-bridge) 的 `reclaude` 分支。** 在上游基础上打了几个补丁，让后台服务 spawn `reclaude`（`claude` 的兼容 wrapper）而不是 `claude`，并在模型选择器里加了几个模型、在 `/config` 里加了 effort 选择、修了 COT 事件超长被拒的问题。不配置 wrapper 时行为和上游完全一致。本分支**没有发布到 npm**，请按[安装](#安装)一节 clone 后自行 build。
 
 关于能实现的效果，详情可以阅读[飞书文档](https://larkcommunity.feishu.cn/docx/OaRIdFIRFoLM3xxTmKwcetHqn5e)
 
@@ -146,6 +146,7 @@ lark-channel-bridge status --profile codex
 | 服务环境变量 | `src/daemon/launchd.ts` | 把该变量烤进 launchd plist，daemon 才看得到 |
 | 重连韧性 | `src/runtime/supervisor.ts`、`src/bot/channel.ts`、`src/commands/index.ts` | keepalive 触发的强制重连不再因为 agent 版本探测超时而中断 |
 | 模型选择器 | `src/agent/models.ts` | `/config` 里加入 Fable 5.1、Fable 5、Opus 5.5、Opus 5 |
+| Effort 选择器 | `src/agent/efforts.ts`、`src/card/config-card.ts`、`src/commands/index.ts`、`src/config/schema.ts`、`src/bot/run-flow.ts`、`src/runtime/run-executor.ts`、`src/agent/types.ts`、`src/agent/claude/adapter.ts` | `/config` 里选推理强度，作为 `--effort` 传给 claude；「跟随默认」不传 |
 | COT 长度上限 | `src/bot/cot.ts` | 过程消息事件按飞书 4096 字节上限截断，而不是被整条拒掉 |
 
 覆盖是可选的：不设 `LARK_CHANNEL_CLAUDE_BIN` 就 spawn 真 `claude`，和上游一模一样。

@@ -115,6 +115,12 @@ export interface AppPreferences {
    */
   model?: string;
   /**
+   * Reasoning effort forwarded as `--effort` (Claude only) — see
+   * `agent/efforts.ts`. `undefined` or the `'default'` sentinel omits the
+   * flag. Default: unset.
+   */
+  effort?: string;
+  /**
    * Whether to send a separate Lark COT process message before the final
    * answer. `brief` mirrors the lightweight tool/progress visibility from
    * the legacy tool display; `detailed` also includes tool args/output.
