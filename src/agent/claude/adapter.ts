@@ -16,6 +16,7 @@ import {
   type AgentRun,
   type AgentRunOptions,
 } from '../types';
+import { EFFORT_PROBE_ARGS } from './effort-probe';
 import { translateEvent } from './stream-json';
 
 export interface ClaudeAdapterOptions {
@@ -79,6 +80,7 @@ export class ClaudeAdapter implements AgentAdapter {
       opts.permissionMode ?? CLAUDE_DEFAULT_PERMISSION_MODE,
       '--append-system-prompt-file',
       systemPromptFile.path,
+      ...EFFORT_PROBE_ARGS,
     ];
     if (opts.sessionId) args.push('--resume', opts.sessionId);
     if (opts.model) args.push('--model', opts.model);

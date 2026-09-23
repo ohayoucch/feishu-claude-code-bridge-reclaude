@@ -1,4 +1,5 @@
 import type { AgentEvent } from '../types';
+import { parseEffortProbe } from './effort-probe';
 
 interface ContentBlock {
   type: string;
@@ -18,6 +19,8 @@ interface ClaudeRawEvent {
   session_id?: string;
   cwd?: string;
   model?: string;
+  hook_event?: string;
+  stdout?: string;
   message?: { content?: ContentBlock[] };
   usage?: {
     input_tokens?: number;
@@ -38,6 +41,12 @@ export function* translateEvent(raw: unknown): Generator<AgentEvent> {
       cwd: evt.cwd,
       model: evt.model,
     };
+    return;
+  }
+
+  if (evt.type === 'system' && evt.subtype === 'hook_response' && evt.hook_event === 'Stop') {
+    const effort = parseEffortProbe(evt.stdout);
+    if (effort) yield { type: 'system', effort };
     return;
   }
 

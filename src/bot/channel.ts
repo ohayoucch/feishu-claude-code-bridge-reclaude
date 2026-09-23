@@ -1612,6 +1612,7 @@ async function processAgentStream(
 
       if (evt.type === 'system') {
         recordSession(evt);
+        state = reduce(state, evt);
         continue;
       }
       if (evt.type === 'usage') {

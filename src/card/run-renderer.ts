@@ -1,4 +1,5 @@
 import { deepMaskEmails } from './mask-email';
+import { runMetaLine } from './run-meta';
 import type { Block, FooterStatus, RunState, ToolEntry } from './run-state';
 import { toolBodyMd, toolHeaderText } from './tool-render';
 
@@ -45,6 +46,9 @@ export function renderCard(state: RunState, options: RunCardRenderOptions = {}):
     elements.push(noteMd(`⚠️ agent 失败：${state.errorMsg}`));
   } else if (state.terminal === 'done' && elements.length === 0) {
     elements.push(noteMd('_（未返回内容）_'));
+  } else if (state.terminal === 'done') {
+    const meta = runMetaLine(state);
+    if (meta) elements.push(noteMd(meta));
   }
 
   if (state.terminal === 'running') {

@@ -1,4 +1,5 @@
 import { maskEmails } from './mask-email';
+import { runMetaLine } from './run-meta';
 import type { Block, RunState, ToolEntry } from './run-state';
 import { toolHeaderText } from './tool-render';
 
@@ -29,6 +30,9 @@ export function renderText(state: RunState): string {
     parts.push(`⚠️ agent 失败:${state.errorMsg}`);
   } else if (state.terminal === 'running' && state.footer) {
     parts.push(footerLine(state.footer));
+  } else if (state.terminal === 'done' && parts.length > 0) {
+    const meta = runMetaLine(state);
+    if (meta) parts.push(meta);
   }
 
   // Strip raw emails so the Feishu tenant audit doesn't reject the message

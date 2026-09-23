@@ -203,6 +203,36 @@ describe('markdown stream startup failures', () => {
     expect(h.channel.sent[0]?.options).toMatchObject({ replyTo: 'om_final' });
   });
 
+  it('ends a finished Claude reply with the model and effort the run reported', async () => {
+    const visible: string[] = [];
+    const h = await createHarness({
+      agentKind: 'claude',
+      messageReply: 'markdown',
+      events: [
+        { type: 'system', sessionId: 'sess-footer', model: 'claude-opus-5-5[1m]' },
+        { type: 'text', delta: 'FOOTER_ANSWER' },
+        { type: 'system', effort: 'max' },
+        { type: 'done', terminationReason: 'normal' },
+      ],
+      stream: async (_chatId, input) => {
+        const producer = (input as {
+          markdown?: (ctrl: { setContent(markdown: string): Promise<void> }) => Promise<void>;
+        }).markdown;
+        await producer?.({
+          setContent: vi.fn(async (markdown: string) => {
+            visible.push(markdown);
+          }),
+        });
+      },
+    });
+    await startTestBridge(h);
+
+    await h.channel.handlers.message?.(message('om_footer', 'run'));
+    await waitFor(() => visible.at(-1)?.includes('`max`') === true);
+
+    expect(visible.at(-1)).toBe('FOOTER_ANSWER\n\n`Opus 5.5` `max`');
+  });
+
   it('opens no progress stream for a final-only round', async () => {
     // The regression this guards: Codex answering without any commentary. The
     // SDK sends its streaming card as soon as `stream()` is called and finishes

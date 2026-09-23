@@ -127,6 +127,26 @@ describe('ClaudeAdapter process contract', () => {
     expect(record.argv[5]).toBe('bypassPermissions');
   });
 
+  it('installs the Stop hook that reports the applied effort', async () => {
+    const fake = await createFakeClaude({
+      lines: [{ type: 'result', session_id: 'sess-probe' }],
+    });
+    cleanup.push(fake.dir);
+
+    const run = new ClaudeAdapter({ binary: fake.path }).run({
+      runId: 'run-probe',
+      prompt: 'probe',
+      cwd: fake.dir,
+    });
+
+    await collect(run.events);
+    const record = await readRecord(fake.recordPath);
+
+    expect(record.argv).toContain('--include-hook-events');
+    const settings = JSON.parse(record.argv[record.argv.indexOf('--settings') + 1] ?? '{}');
+    expect(settings.hooks.Stop[0].hooks[0].command).toContain('$CLAUDE_EFFORT');
+  });
+
   it('passes effort after the model', async () => {
     const fake = await createFakeClaude({
       lines: [{ type: 'result', session_id: 'sess-effort' }],

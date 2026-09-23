@@ -83,6 +83,21 @@ describe('Claude stream-json translator', () => {
     expect([...translateEvent({ type: 'result', session_id: 'sess-2' })][0]).not.toHaveProperty('threadId');
   });
 
+  it('reports the effort from the Stop hook probe and ignores other hook output', () => {
+    const hook = (hookEvent: string, stdout?: string) => [
+      ...translateEvent({ type: 'system', subtype: 'hook_response', hook_event: hookEvent, stdout }),
+    ];
+    expect(hook('Stop', 'lark-channel-effort=high\n')).toEqual([{ type: 'system', effort: 'high' }]);
+    expect(hook('Stop', 'other output\r\nlark-channel-effort=max\r\n')).toEqual([
+      { type: 'system', effort: 'max' },
+    ]);
+    // Model without effort support, and a shell that didn't expand the variable.
+    expect(hook('Stop', 'lark-channel-effort=\n')).toEqual([]);
+    expect(hook('Stop', 'lark-channel-effort="$CLAUDE_EFFORT"\n')).toEqual([]);
+    expect(hook('PreToolUse', 'lark-channel-effort=max\n')).toEqual([]);
+    expect([...translateEvent({ type: 'system', subtype: 'hook_started', hook_event: 'Stop' })]).toEqual([]);
+  });
+
   it('ignores unknown, empty, and incomplete raw events', () => {
     expect([...translateEvent(null)]).toEqual([]);
     expect([...translateEvent({ type: 'assistant', message: { content: [{ type: 'text', text: '' }] } })]).toEqual([]);

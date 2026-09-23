@@ -27,6 +27,10 @@ export interface RunState {
   /** Set when terminal === 'idle_timeout' — how long claude was idle before
    * the watchdog gave up (so the message can say "N 分钟无响应"). */
   idleTimeoutMinutes?: number;
+  /** Model the agent reported at startup, for the reply footer. */
+  model?: string;
+  /** Effort the agent reported it applied, for the reply footer. */
+  effort?: string;
 }
 
 export const initialState: RunState = {
@@ -65,6 +69,13 @@ export function reduce(state: RunState, evt: AgentEvent): RunState {
 
     case 'final_text':
       return { ...state, finalText: evt.content };
+
+    case 'system':
+      return {
+        ...state,
+        ...(evt.model ? { model: evt.model } : {}),
+        ...(evt.effort ? { effort: evt.effort } : {}),
+      };
 
     case 'thinking': {
       return {
