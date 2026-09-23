@@ -3,7 +3,7 @@ import type { AgentEvent } from '../../../src/agent/types.js';
 import { renderCard } from '../../../src/card/run-renderer.js';
 import { displayModel, runMetaLine } from '../../../src/card/run-meta.js';
 import { initialState, markInterrupted, reduce } from '../../../src/card/run-state.js';
-import { renderText } from '../../../src/card/text-renderer.js';
+import { renderMarkdownCard, renderText } from '../../../src/card/text-renderer.js';
 
 const stateFrom = (events: AgentEvent[]) => events.reduce(reduce, initialState);
 const meta: AgentEvent[] = [
@@ -55,5 +55,19 @@ describe('reply footer', () => {
     expect(renderText(running)).not.toContain('Opus 5.5');
     expect(renderText(markInterrupted(running))).not.toContain('Opus 5.5');
     expect(renderText(stateFrom([...meta, done]))).toBe('');
+  });
+
+  it('carries the colored footer into the plain markdown card, previewed by its opening text', () => {
+    const done: AgentEvent = { type: 'done', terminationReason: 'normal' };
+    expect(renderMarkdownCard(stateFrom([...meta, { type: 'text', delta: 'answer' }, done]))).toEqual({
+      schema: '2.0',
+      config: { summary: { content: 'answer `Opus 5.5` `Max`' } },
+      body: { elements: [{ tag: 'markdown', content: `answer\n\n${cardFooter}` }] },
+    });
+
+    const long = stateFrom([...meta, { type: 'text', delta: 'x'.repeat(60) }, done]);
+    expect(renderMarkdownCard(long)).toMatchObject({
+      config: { summary: { content: `${'x'.repeat(49)}…` } },
+    });
   });
 });

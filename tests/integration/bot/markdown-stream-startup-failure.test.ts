@@ -97,8 +97,8 @@ describe('markdown stream startup failures', () => {
         path: { message_id: 'om_first', reaction_id: 'reaction_1' },
       }),
     );
-    expect(lastMarkdown(h.channel)).toContain('agent 失败');
-    expect(lastMarkdown(h.channel)).toContain('codex exited with code 1');
+    expect(lastCardMarkdown(h.channel)).toContain('agent 失败');
+    expect(lastCardMarkdown(h.channel)).toContain('codex exited with code 1');
   });
 
   it('does not wait for the working reaction before draining a failed agent run', async () => {
@@ -114,7 +114,7 @@ describe('markdown stream startup failures', () => {
     await h.channel.handlers.message?.(message('om_second', 'second'));
     await waitFor(() => h.agent.runOptions.length === 2, 1000);
 
-    expect(lastMarkdown(h.channel)).toContain('agent 失败');
+    expect(lastCardMarkdown(h.channel)).toContain('agent 失败');
 
     reaction.resolve({ data: { reaction_id: 'reaction_1' } });
     await waitFor(() => h.channel.rawClient.im.v1.messageReaction.delete.mock.calls.length > 0);
@@ -199,7 +199,7 @@ describe('markdown stream startup failures', () => {
 
     expect(visibleProgress.some((markdown) => markdown.includes('progress update'))).toBe(true);
     expect(h.channel.sent).toHaveLength(1);
-    expect(lastMarkdown(h.channel)).toContain('FINAL_SENTINEL');
+    expect(lastCardMarkdown(h.channel)).toContain('FINAL_SENTINEL');
     expect(h.channel.sent[0]?.options).toMatchObject({ replyTo: 'om_final' });
   });
 
@@ -259,7 +259,26 @@ describe('markdown stream startup failures', () => {
 
     expect(streamCalls).toHaveLength(0);
     expect(h.channel.sent).toHaveLength(1);
-    expect(lastMarkdown(h.channel)).toContain('FINAL_ONLY_SENTINEL');
+    expect(lastCardMarkdown(h.channel)).toContain('FINAL_ONLY_SENTINEL');
+  });
+
+  it('falls back to a post when the final reply card is rejected', async () => {
+    const h = await createHarness({
+      events: [
+        { type: 'final_text', content: 'FINAL_AS_POST' },
+        { type: 'done', terminationReason: 'normal' },
+      ],
+      send: async (_chatId, content) => {
+        if ('card' in (content as object)) throw new Error('card too large');
+        return { messageId: 'om_post' };
+      },
+    });
+    await startTestBridge(h);
+
+    await h.channel.handlers.message?.(message('om_card_rejected', 'run'));
+    await waitFor(() => h.channel.sent.length === 2);
+
+    expect(lastMarkdown(h.channel)).toContain('FINAL_AS_POST');
   });
 
   it('does not repeat streamed text as the final reply when Codex held nothing back', async () => {
@@ -379,7 +398,7 @@ describe('markdown stream startup failures', () => {
     await h.channel.handlers.message?.(message('om_stream_fail', 'run'));
     await waitFor(() => h.channel.sent.length === 1);
 
-    expect(lastMarkdown(h.channel)).toContain('FINAL_AFTER_STREAM_FAILURE');
+    expect(lastCardMarkdown(h.channel)).toContain('FINAL_AFTER_STREAM_FAILURE');
     expect(
       fail.mock.calls.some(
         (call) =>
@@ -672,6 +691,16 @@ function lastMarkdown(channel: FakeLarkChannel): string {
   const content = channel.sent.at(-1)?.content as { markdown?: string } | undefined;
   expect(content?.markdown).toBeTypeOf('string');
   return content?.markdown ?? '';
+}
+
+/** Markdown of the last send, which must be the plain card final replies use. */
+function lastCardMarkdown(channel: FakeLarkChannel): string {
+  const content = channel.sent.at(-1)?.content as
+    | { card?: { body?: { elements?: Array<{ content?: string }> } } }
+    | undefined;
+  const markdown = content?.card?.body?.elements?.[0]?.content;
+  expect(markdown).toBeTypeOf('string');
+  return markdown ?? '';
 }
 
 async function waitFor(predicate: () => boolean, timeoutMs = 3000): Promise<void> {

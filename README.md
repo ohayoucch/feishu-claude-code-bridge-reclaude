@@ -4,7 +4,7 @@ A lightweight bot that bridges Feishu / Lark messenger with your local Claude Co
 
 [中文 README](./README.zh.md)
 
-> **This is the `reclaude` fork of [lark-channel-bridge](https://github.com/zarazhangrui/lark-coding-agent-bridge).** Upstream plus a few patches so the background service can spawn `reclaude` (a drop-in `claude` wrapper) instead of `claude`, with extra models in the picker, an effort picker in `/config`, a model-and-effort footer on replies, and a fix for oversized COT events. Leave the wrapper unconfigured and it behaves exactly like upstream. It is **not published to npm** — clone and build it as described in [Install](#install).
+> **This is the `reclaude` fork of [lark-channel-bridge](https://github.com/zarazhangrui/lark-coding-agent-bridge).** Upstream plus a few patches so the background service can spawn `reclaude` (a drop-in `claude` wrapper) instead of `claude`, with extra models in the picker, an effort picker in `/config`, a model-and-effort footer on replies, card final replies with COT on, and a fix for oversized COT events. Leave the wrapper unconfigured and it behaves exactly like upstream. It is **not published to npm** — clone and build it as described in [Install](#install).
 
 For a product walkthrough, see the [Feishu document](https://larkcommunity.feishu.cn/docx/OaRIdFIRFoLM3xxTmKwcetHqn5e).
 
@@ -148,6 +148,7 @@ lark-channel-bridge status --profile codex
 | Model picker | `src/agent/models.ts` | Fable 5.1, Fable 5, Opus 5.5 and Opus 5 in `/config` |
 | Effort picker | `src/agent/efforts.ts`, `src/card/config-card.ts`, `src/commands/index.ts`, `src/config/schema.ts`, `src/bot/run-flow.ts`, `src/runtime/run-executor.ts`, `src/agent/types.ts`, `src/agent/claude/adapter.ts` | reasoning effort picked in `/config`, forwarded to claude as `--effort`; "follow default" passes nothing |
 | Reply footer | `src/agent/claude/effort-probe.ts`, `src/agent/claude/stream-json.ts`, `src/agent/claude/adapter.ts`, `src/card/run-meta.ts`, `src/card/run-state.ts`, `src/card/text-renderer.ts`, `src/card/run-renderer.ts`, `src/bot/channel.ts` | every finished reply ends with the model and effort the run actually used, as tags colored by strength in card replies (inline code in post replies); a Stop hook reports `CLAUDE_EFFORT`, so per-model downgrades show |
+| Final reply card | `src/bot/channel.ts`, `src/card/text-renderer.ts` | in the message-card (`markdown`) mode, a reply sent on its own — with CoT process messages on, or Codex's final answer — is a plain card shaped like the streaming one instead of a post; a rejected card (e.g. oversized) falls back to a post |
 | COT size bound | `src/bot/cot.ts` | process-message events are truncated to Feishu's 4096-byte limit instead of being rejected |
 
 The override is opt-in: with `LARK_CHANNEL_CLAUDE_BIN` unset the bridge spawns plain `claude`, exactly like upstream.

@@ -4,7 +4,7 @@
 
 [English README](./README.md)
 
-> **这是 [lark-channel-bridge](https://github.com/zarazhangrui/lark-coding-agent-bridge) 的 `reclaude` 分支。** 在上游基础上打了几个补丁，让后台服务 spawn `reclaude`（`claude` 的兼容 wrapper）而不是 `claude`，并在模型选择器里加了几个模型、在 `/config` 里加了 effort 选择、在回复末尾标出实际用的模型和 effort、修了 COT 事件超长被拒的问题。不配置 wrapper 时行为和上游完全一致。本分支**没有发布到 npm**，请按[安装](#安装)一节 clone 后自行 build。
+> **这是 [lark-channel-bridge](https://github.com/zarazhangrui/lark-coding-agent-bridge) 的 `reclaude` 分支。** 在上游基础上打了几个补丁，让后台服务 spawn `reclaude`（`claude` 的兼容 wrapper）而不是 `claude`，并在模型选择器里加了几个模型、在 `/config` 里加了 effort 选择、在回复末尾标出实际用的模型和 effort、开 COT 过程消息时最终回复也发卡片、修了 COT 事件超长被拒的问题。不配置 wrapper 时行为和上游完全一致。本分支**没有发布到 npm**，请按[安装](#安装)一节 clone 后自行 build。
 
 关于能实现的效果，详情可以阅读[飞书文档](https://larkcommunity.feishu.cn/docx/OaRIdFIRFoLM3xxTmKwcetHqn5e)
 
@@ -148,6 +148,7 @@ lark-channel-bridge status --profile codex
 | 模型选择器 | `src/agent/models.ts` | `/config` 里加入 Fable 5.1、Fable 5、Opus 5.5、Opus 5 |
 | Effort 选择器 | `src/agent/efforts.ts`、`src/card/config-card.ts`、`src/commands/index.ts`、`src/config/schema.ts`、`src/bot/run-flow.ts`、`src/runtime/run-executor.ts`、`src/agent/types.ts`、`src/agent/claude/adapter.ts` | `/config` 里选推理强度，作为 `--effort` 传给 claude；「跟随默认」不传 |
 | 回复页脚 | `src/agent/claude/effort-probe.ts`、`src/agent/claude/stream-json.ts`、`src/agent/claude/adapter.ts`、`src/card/run-meta.ts`、`src/card/run-state.ts`、`src/card/text-renderer.ts`、`src/card/run-renderer.ts`、`src/bot/channel.ts` | 每条完成的回复末尾标出本轮实际用的模型和 effort，卡片回复里是按强弱着色的标签（富文本回复用行内代码）；effort 由 Stop 钩子读 `CLAUDE_EFFORT` 上报，是按模型降档后的真实值 |
+| 最终回复卡片 | `src/bot/channel.ts`、`src/card/text-renderer.ts` | 「消息卡片」模式下单独发出的回复（开了 COT 过程消息时，或 Codex 的最终答案）发成和流式卡片同样结构的普通卡片，而不是富文本；卡片被拒（比如超长）时退回富文本 |
 | COT 长度上限 | `src/bot/cot.ts` | 过程消息事件按飞书 4096 字节上限截断，而不是被整条拒掉 |
 
 覆盖是可选的：不设 `LARK_CHANNEL_CLAUDE_BIN` 就 spawn 真 `claude`，和上游一模一样。

@@ -2,6 +2,7 @@ import type {
   LarkChannel,
   LarkChannelOptions,
   NormalizedMessage,
+  SendResult,
 } from '@larksuite/channel';
 import { createLarkChannel } from '@larksuite/channel';
 import { dirname, join } from 'node:path';
@@ -27,7 +28,7 @@ import {
   reduce,
   type RunState,
 } from '../card/run-state';
-import { renderText } from '../card/text-renderer';
+import { renderMarkdownCard, renderText } from '../card/text-renderer';
 import { tryHandleCommand, type Controls } from '../commands';
 import type { AppConfig } from '../config/schema';
 import {
@@ -1470,13 +1471,27 @@ async function sendFinalReply(input: {
     log.info('outbound', 'sent', outboundLogFields(input, 'card', body, result));
   } else if (input.replyMode === 'markdown') {
     if (body.trim()) {
-      const result = await input.channel.send(
-        input.chatId,
-        { markdown: body },
-        input.sendOpts,
-      );
-      requireMessageReceipt(result, 'markdown');
-      log.info('outbound', 'sent', outboundLogFields(input, 'markdown', body, result));
+      // A plain card shaped like the streaming reply, so a reply delivered on
+      // its own (CoT on, or Codex's final answer) is still a card. A card can't
+      // be split, so an oversized or rejected one falls back to a post, which
+      // the SDK chunks.
+      let type = 'markdown-card';
+      let result: SendResult;
+      try {
+        result = await input.channel.send(
+          input.chatId,
+          { card: renderMarkdownCard(input.state) },
+          input.sendOpts,
+        );
+      } catch (err) {
+        log.warn('outbound', 'markdown-card-fallback', {
+          err: err instanceof Error ? err.message : String(err),
+        });
+        type = 'markdown';
+        result = await input.channel.send(input.chatId, { markdown: body }, input.sendOpts);
+      }
+      requireMessageReceipt(result, type);
+      log.info('outbound', 'sent', outboundLogFields(input, type, body, result));
     }
   } else if (body.trim()) {
     const result = await input.channel.send(

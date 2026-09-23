@@ -44,6 +44,26 @@ export function renderText(state: RunState, { card = false }: { card?: boolean }
   return maskEmails(parts.join('\n\n'));
 }
 
+const SUMMARY_MAX = 50;
+
+/**
+ * `renderText` as a plain (non-streaming) card shaped like the SDK's streaming
+ * markdown reply — one markdown element, previewed in chat lists by its
+ * opening text — for a reply delivered as a single message.
+ */
+export function renderMarkdownCard(state: RunState): object {
+  const preview = renderText(state).replace(/\s+/g, ' ').trim();
+  return {
+    schema: '2.0',
+    config: {
+      summary: {
+        content: preview.length > SUMMARY_MAX ? `${preview.slice(0, SUMMARY_MAX - 1)}…` : preview,
+      },
+    },
+    body: { elements: [{ tag: 'markdown', content: renderText(state, { card: true }) }] },
+  };
+}
+
 function renderBlock(block: Block): string {
   if (block.kind === 'text') {
     return block.content.trim();
