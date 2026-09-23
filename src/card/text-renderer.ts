@@ -12,8 +12,11 @@ import { toolHeaderText } from './tool-render';
  *   - Tool calls collapse to a single short line each (no body)
  *   - No reasoning / thinking output (no place to fold it; would be noise)
  *   - Footer is appended inline at the bottom while running
+ *
+ * Pass `card: true` when the text lands in a card's markdown element (the
+ * streaming `markdown` reply), so the reply footer can use colored tags.
  */
-export function renderText(state: RunState): string {
+export function renderText(state: RunState, { card = false }: { card?: boolean } = {}): string {
   const parts: string[] = [];
 
   for (const block of state.blocks) {
@@ -31,7 +34,7 @@ export function renderText(state: RunState): string {
   } else if (state.terminal === 'running' && state.footer) {
     parts.push(footerLine(state.footer));
   } else if (state.terminal === 'done' && parts.length > 0) {
-    const meta = runMetaLine(state);
+    const meta = runMetaLine(state, { card });
     if (meta) parts.push(meta);
   }
 

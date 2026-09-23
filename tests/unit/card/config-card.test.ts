@@ -47,6 +47,6 @@ describe('configFormCard effort picker', () => {
   });
 
   it('shows the saved effort in the confirmation card', () => {
-    expect(JSON.stringify(configSavedCard({ ...base, effort: 'max' }))).toContain('Effort 推理强度**:`max`');
+    expect(JSON.stringify(configSavedCard({ ...base, effort: 'max' }))).toContain('Effort 推理强度**:`Max`');
   });
 });

@@ -228,9 +228,11 @@ describe('markdown stream startup failures', () => {
     await startTestBridge(h);
 
     await h.channel.handlers.message?.(message('om_footer', 'run'));
-    await waitFor(() => visible.at(-1)?.includes('`max`') === true);
+    await waitFor(() => visible.at(-1)?.includes('Max</text_tag>') === true);
 
-    expect(visible.at(-1)).toBe('FOOTER_ANSWER\n\n`Opus 5.5` `max`');
+    expect(visible.at(-1)).toBe(
+      "FOOTER_ANSWER\n\n<text_tag color='indigo'>Opus 5.5</text_tag> <text_tag color='red'>Max</text_tag>",
+    );
   });
 
   it('opens no progress stream for a final-only round', async () => {

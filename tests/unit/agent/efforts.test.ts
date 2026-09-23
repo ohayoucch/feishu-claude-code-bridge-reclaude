@@ -31,7 +31,8 @@ describe('agent effort catalog', () => {
   it('normalizes and labels stored values for the picker', () => {
     expect(normalizeEffortSelection('claude', 'max')).toBe('max');
     expect(normalizeEffortSelection('claude', 'bogus')).toBe(DEFAULT_EFFORT);
-    expect(effortLabel('claude', 'max')).toBe('max');
+    expect(effortLabel('claude', 'max')).toBe('Max');
+    expect(effortLabel('claude', 'xhigh')).toBe('xHigh');
     expect(effortLabel('claude', undefined)).toContain('跟随默认');
   });
 });

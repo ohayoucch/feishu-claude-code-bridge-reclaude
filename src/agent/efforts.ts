@@ -17,11 +17,11 @@ export interface EffortOption {
  */
 const CLAUDE_EFFORTS: EffortOption[] = [
   { value: DEFAULT_EFFORT, label: '跟随默认（不指定）' },
-  { value: 'low', label: 'low' },
-  { value: 'medium', label: 'medium' },
-  { value: 'high', label: 'high' },
-  { value: 'xhigh', label: 'xhigh' },
-  { value: 'max', label: 'max' },
+  { value: 'low', label: 'Low' },
+  { value: 'medium', label: 'Medium' },
+  { value: 'high', label: 'High' },
+  { value: 'xhigh', label: 'xHigh' },
+  { value: 'max', label: 'Max' },
 ];
 
 /** Effort picker options for a profile's agent kind; empty when unsupported. */

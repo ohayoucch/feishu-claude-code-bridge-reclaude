@@ -147,7 +147,7 @@ lark-channel-bridge status --profile codex
 | 重连韧性 | `src/runtime/supervisor.ts`、`src/bot/channel.ts`、`src/commands/index.ts` | keepalive 触发的强制重连不再因为 agent 版本探测超时而中断 |
 | 模型选择器 | `src/agent/models.ts` | `/config` 里加入 Fable 5.1、Fable 5、Opus 5.5、Opus 5 |
 | Effort 选择器 | `src/agent/efforts.ts`、`src/card/config-card.ts`、`src/commands/index.ts`、`src/config/schema.ts`、`src/bot/run-flow.ts`、`src/runtime/run-executor.ts`、`src/agent/types.ts`、`src/agent/claude/adapter.ts` | `/config` 里选推理强度，作为 `--effort` 传给 claude；「跟随默认」不传 |
-| 回复页脚 | `src/agent/claude/effort-probe.ts`、`src/agent/claude/stream-json.ts`、`src/agent/claude/adapter.ts`、`src/card/run-meta.ts`、`src/card/run-state.ts`、`src/card/text-renderer.ts`、`src/card/run-renderer.ts`、`src/bot/channel.ts` | 每条完成的回复末尾标出本轮实际用的模型和 effort；effort 由 Stop 钩子读 `CLAUDE_EFFORT` 上报，是按模型降档后的真实值 |
+| 回复页脚 | `src/agent/claude/effort-probe.ts`、`src/agent/claude/stream-json.ts`、`src/agent/claude/adapter.ts`、`src/card/run-meta.ts`、`src/card/run-state.ts`、`src/card/text-renderer.ts`、`src/card/run-renderer.ts`、`src/bot/channel.ts` | 每条完成的回复末尾标出本轮实际用的模型和 effort，卡片回复里是按强弱着色的标签（富文本回复用行内代码）；effort 由 Stop 钩子读 `CLAUDE_EFFORT` 上报，是按模型降档后的真实值 |
 | COT 长度上限 | `src/bot/cot.ts` | 过程消息事件按飞书 4096 字节上限截断，而不是被整条拒掉 |
 
 覆盖是可选的：不设 `LARK_CHANNEL_CLAUDE_BIN` 就 spawn 真 `claude`，和上游一模一样。

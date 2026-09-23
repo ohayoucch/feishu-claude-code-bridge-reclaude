@@ -47,7 +47,7 @@ export function renderCard(state: RunState, options: RunCardRenderOptions = {}):
   } else if (state.terminal === 'done' && elements.length === 0) {
     elements.push(noteMd('_（未返回内容）_'));
   } else if (state.terminal === 'done') {
-    const meta = runMetaLine(state);
+    const meta = runMetaLine(state, { card: true });
     if (meta) elements.push(noteMd(meta));
   }
 
