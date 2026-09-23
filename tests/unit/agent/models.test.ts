@@ -16,7 +16,7 @@ describe('agent model catalog', () => {
     expect(codex[0]?.value).toBe(DEFAULT_MODEL);
     expect(claude.map((m) => m.value)).toContain('claude-opus-4-8');
     expect(claude.map((m) => m.value)).toEqual(
-      expect.arrayContaining(['claude-fable-5-1', 'claude-fable-5', 'claude-opus-5']),
+      expect.arrayContaining(['claude-fable-5-1', 'claude-fable-5', 'claude-opus-5-5', 'claude-opus-5']),
     );
     expect(codex.map((m) => m.value)).toContain('gpt-5-codex');
     expect(claude.map((m) => m.value)).not.toContain('gpt-5-codex');

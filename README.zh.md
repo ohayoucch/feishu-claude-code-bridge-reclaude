@@ -145,7 +145,7 @@ lark-channel-bridge status --profile codex
 | 二进制覆盖 | `src/runtime/agent-runtime.ts` | 把 `LARK_CHANNEL_CLAUDE_BIN` 作为要 spawn 的二进制传给 Claude adapter |
 | 服务环境变量 | `src/daemon/launchd.ts` | 把该变量烤进 launchd plist，daemon 才看得到 |
 | 重连韧性 | `src/runtime/supervisor.ts`、`src/bot/channel.ts`、`src/commands/index.ts` | keepalive 触发的强制重连不再因为 agent 版本探测超时而中断 |
-| 模型选择器 | `src/agent/models.ts` | `/config` 里加入 Fable 5.1、Fable 5、Opus 5 |
+| 模型选择器 | `src/agent/models.ts` | `/config` 里加入 Fable 5.1、Fable 5、Opus 5.5、Opus 5 |
 | COT 长度上限 | `src/bot/cot.ts` | 过程消息事件按飞书 4096 字节上限截断，而不是被整条拒掉 |
 
 覆盖是可选的：不设 `LARK_CHANNEL_CLAUDE_BIN` 就 spawn 真 `claude`，和上游一模一样。

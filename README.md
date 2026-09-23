@@ -4,7 +4,7 @@ A lightweight bot that bridges Feishu / Lark messenger with your local Claude Co
 
 [中文 README](./README.zh.md)
 
-> **This is the `reclaude` fork of [lark-channel-bridge](https://github.com/zarazhangrui/lark-coding-agent-bridge).** Upstream plus a few patches so the background service can spawn `reclaude` (a drop-in `claude` wrapper) instead of `claude`, with extra models in the picker and a fix for oversized COT events. Leave the wrapper unconfigured and it behaves exactly like upstream. It is **not published to npm** — clone and build it as described in [Install](#install).
+> **This is the `reclaude` fork of [lark-channel-bridge](https://github.com/zarazhangrui/lark-coding-agent-bridge).** Upstream plus a few patches so the background service can spawn `reclaude` (a drop-in `claude` wrapper) instead of `claude`, with extra models in the picker and and a fix for oversized COT events. Leave the wrapper unconfigured and it behaves exactly like upstream. It is **not published to npm** — clone and build it as described in [Install](#install).
 
 For a product walkthrough, see the [Feishu document](https://larkcommunity.feishu.cn/docx/OaRIdFIRFoLM3xxTmKwcetHqn5e).
 
@@ -145,7 +145,7 @@ lark-channel-bridge status --profile codex
 | Binary override | `src/runtime/agent-runtime.ts` | `LARK_CHANNEL_CLAUDE_BIN` is handed to the Claude adapter as the binary to spawn |
 | Service environment | `src/daemon/launchd.ts` | the variable is baked into the launchd plist so the daemon sees it |
 | Reconnect resilience | `src/runtime/supervisor.ts`, `src/bot/channel.ts`, `src/commands/index.ts` | a keepalive-triggered reconnect no longer aborts when the agent version probe times out |
-| Model picker | `src/agent/models.ts` | Fable 5.1, Fable 5 and Opus 5 in `/config` |
+| Model picker | `src/agent/models.ts` | Fable 5.1, Fable 5, Opus 5.5 and Opus 5 in `/config` |
 | COT size bound | `src/bot/cot.ts` | process-message events are truncated to Feishu's 4096-byte limit instead of being rejected |
 
 The override is opt-in: with `LARK_CHANNEL_CLAUDE_BIN` unset the bridge spawns plain `claude`, exactly like upstream.

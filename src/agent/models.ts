@@ -29,6 +29,7 @@ const CLAUDE_MODELS: ModelOption[] = [
   { value: DEFAULT_MODEL, label: '跟随默认（不指定）' },
   { value: 'claude-fable-5-1', label: 'Fable 5.1（最新）' },
   { value: 'claude-fable-5', label: 'Fable 5' },
+  { value: 'claude-opus-5-5', label: 'Opus 5.5' },
   { value: 'claude-opus-5', label: 'Opus 5' },
   { value: 'claude-opus-4-8', label: 'Opus 4.8' },
   { value: 'claude-opus-4-7', label: 'Opus 4.7' },
