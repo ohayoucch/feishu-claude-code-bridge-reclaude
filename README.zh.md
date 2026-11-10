@@ -145,7 +145,7 @@ lark-channel-bridge status --profile codex
 | 二进制覆盖 | `src/runtime/agent-runtime.ts` | 把 `LARK_CHANNEL_CLAUDE_BIN` 作为要 spawn 的二进制传给 Claude adapter |
 | 服务环境变量 | `src/daemon/launchd.ts` | 把该变量烤进 launchd plist，daemon 才看得到 |
 | 重连韧性 | `src/runtime/supervisor.ts`、`src/bot/channel.ts`、`src/commands/index.ts` | keepalive 触发的强制重连不再因为 agent 版本探测超时而中断 |
-| 模型选择器 | `src/agent/models.ts` | `/config` 里加入 Fable 5.1、Fable 5、Opus 5.5、Opus 5 |
+| 模型选择器 | `src/agent/models.ts` | `/config` 里加入 Fable 5.2、Fable 5.1、Fable 5、Opus 5.5、Opus 5 |
 | Effort 选择器 | `src/agent/efforts.ts`、`src/card/config-card.ts`、`src/commands/index.ts`、`src/config/schema.ts`、`src/bot/run-flow.ts`、`src/runtime/run-executor.ts`、`src/agent/types.ts`、`src/agent/claude/adapter.ts` | `/config` 里选推理强度，作为 `--effort` 传给 claude；「跟随默认」不传 |
 | 回复页脚 | `src/agent/claude/effort-probe.ts`、`src/agent/claude/stream-json.ts`、`src/agent/claude/adapter.ts`、`src/card/run-meta.ts`、`src/card/run-state.ts`、`src/card/text-renderer.ts`、`src/card/run-renderer.ts`、`src/bot/channel.ts` | 每条完成的回复末尾标出本轮实际用的模型和 effort，卡片回复里是按强弱着色的标签（富文本回复用行内代码）；effort 由 Stop 钩子读 `CLAUDE_EFFORT` 上报，是按模型降档后的真实值 |
 | 最终回复卡片 | `src/bot/channel.ts`、`src/card/text-renderer.ts` | 「消息卡片」模式下单独发出的回复（开了 COT 过程消息时，或 Codex 的最终答案）发成和流式卡片同样结构的普通卡片，而不是富文本；卡片被拒（比如超长）时退回富文本 |
